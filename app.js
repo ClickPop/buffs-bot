@@ -13,8 +13,8 @@ const clients = [];
 (async () => {
   let bots = await Bot.find();
   bots.forEach(async bot => {
-    clients[bot.id] = await tmi();
     if (bot.joined === true) {
+      clients[bot.id] = await tmi();
       clients[bot.id].join(bot.twitch_username);
     }
   })
@@ -26,7 +26,7 @@ app.post('/', [
   check('buffs_userId', 'No buffs user id specified').exists(),
   check('action', 'Invalid action specified')
     .exists()
-    .custom((value) => value === 'join' || value === 'part')
+    .custom((value) => value === 'join' || value === 'part' || value === 'updateUsername')
 ], async (req, res) => {
   const errors = validationResult(req);
   if(!errors.isEmpty()) {
@@ -41,7 +41,7 @@ app.post('/', [
   } = req.body;
 
   try {
-    let bot = await Bot.findOne({twitch_username});
+    let bot = await Bot.findOne({twitch_userId});
 
     if (!bot) {
       bot = new Bot({
@@ -52,10 +52,11 @@ app.post('/', [
     }
   
     if (!clients[bot.id]) {
-      if (action === 'part') {
-        return res.status(422).json({errors: 'Cannot part if you have not joined'});
-      }
       clients[bot.id] = await tmi();
+    }
+
+    if (action === 'part' && (bot.joined !== true || !client[bot.id])) {
+      return res.status(422).json({errors: 'Cannot part if you have not joined'});
     }
   
     switch (action) {
@@ -67,6 +68,12 @@ app.post('/', [
       case 'part':
         await clients[bot.id].part(twitch_username);
         bot.joined = false;
+        delete clients[bot.id];
+        await bot.save();
+        console.log(clients);
+        return res.json({status: 'success', data: bot});
+      case 'updateUsername':
+        bot.twitch_username = twitch_username;
         await bot.save();
         return res.json({status: 'success', data: bot});
     }
