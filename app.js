@@ -48,7 +48,7 @@ app.post('/', [
 
     await bot.save();
 
-    return res.json({status: 'success', data: {bot, created: true}});
+    return res.json({status: 'success', data: {bot, created: tr}});
   } catch (err) {
     console.error(err);
     res.status(500).json({status: 'failure', errors: {error: err}})
