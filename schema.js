@@ -10,10 +10,6 @@ const BotSchema = new Schema({
     type: String,
     required: true
   },
-  buffs_userId: {
-    type: Number,
-    required: true
-  },
   joined: {
     type: Boolean,
     required: true,

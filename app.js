@@ -23,40 +23,70 @@ const clients = [];
 app.post('/', [
   check('twitch_username', 'No twitch username specified').exists(),
   check('twitch_userId', 'No twitch user id specified').exists(),
-  check('buffs_userId', 'No buffs user id specified').exists(),
+], async (req, res) => {
+  const errors = validationResult(req);
+  if(!errors.isEmpty()) {
+    return res.status(422).json({status: 'failure', errors: errors.array()});
+  }
+
+  try {
+    const {
+      twitch_username,
+      twitch_userId
+    } = req.body;
+    
+    let bot = await Bot.findOne({twitch_userId});
+
+    if (bot) {
+      return res.status(404).json({status: 'failure', errors: 'Bot already exists'});
+    }
+
+    bot = new Bot({
+      twitch_username,
+      twitch_userId
+    });
+
+    await bot.save();
+
+    return res.json({status: 'success', data: {bot, created: true}});
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({status: 'failure', errors: {error: err}})
+  }
+
+})
+
+app.put('/', [
+  check('twitch_username', 'No twitch username specified').exists(),
+  check('twitch_userId', 'No twitch user id specified').exists(),
   check('action', 'Invalid action specified')
     .exists()
     .custom((value) => value === 'join' || value === 'part' || value === 'updateUsername')
 ], async (req, res) => {
   const errors = validationResult(req);
   if(!errors.isEmpty()) {
-    return res.status(422).json({errors: errors.array()});
+    return res.status(422).json({status: 'failure', errors: errors.array()});
   }
 
-  const {
-    twitch_username,
-    twitch_userId,
-    buffs_userId,
-    action
-  } = req.body;
-
   try {
+    const {
+      twitch_username,
+      twitch_userId,
+      action
+    } = req.body;
+
     let bot = await Bot.findOne({twitch_userId});
 
     if (!bot) {
-      bot = new Bot({
-        twitch_username,
-        twitch_userId,
-        buffs_userId
-      });
+      return res.status(404).json({status: 'failure', errors: 'No bot found'});
     }
   
     if (!clients[bot.id]) {
       clients[bot.id] = await tmi();
     }
 
-    if (action === 'part' && (bot.joined !== true || !client[bot.id])) {
-      return res.status(422).json({errors: 'Cannot part if you have not joined'});
+    if (action === 'part' && bot.joined !== true) {
+      return res.status(422).json({status: 'failure', errors: 'Cannot part if you have not joined'});
     }
   
     switch (action) {
@@ -70,7 +100,6 @@ app.post('/', [
         bot.joined = false;
         delete clients[bot.id];
         await bot.save();
-        console.log(clients);
         return res.json({status: 'success', data: bot});
       case 'updateUsername':
         bot.twitch_username = twitch_username;
@@ -79,8 +108,33 @@ app.post('/', [
     }
   } catch (err) {
     console.error(err);
-    res.status(500).json({errors: {error: err}})
+    res.status(500).json({status: 'failure', errors: {error: err}})
   }
+});
+
+app.delete('/', [
+  check('twitch_userId', 'No twitch user id specified').exists()
+], async (req, res) => {
+  const errors = validationResult(req);
+  if(!errors.isEmpty()) {
+    return res.status(422).json({errors: errors.array()});
+  }
+
+  try {
+    const {twitch_userId} = req.body;
+
+    let bot = await Bot.findOne({twitch_userId});
+  
+    if (!bot) {
+      return res.status(404).json({errors: 'No user found'});
+    }
+    await Bot.deleteOne({_id: bot.id});
+    res.json({status: 'success', data: {bot, deleted: true}});
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({status: 'failure', errors: {error: err}})
+  }
+
 });
 
 const PORT = process.env.PORT || 5000;
