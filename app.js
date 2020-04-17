@@ -86,7 +86,9 @@ app.put('/', [
     }
 
     if (action === 'part' && bot.joined !== true) {
-      return res.status(422).json({status: 'failure', errors: 'Cannot part if you have not joined'});
+      return res.status(422).json({status: 'failure', errors: 'Already parted.'});
+    } else if (action === 'join' && bot.joined !== false) {
+      return res.status(422).json({status: 'failure', errors: 'Already joined.'});
     }
   
     switch (action) {
