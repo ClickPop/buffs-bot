@@ -4,7 +4,7 @@ const tmi = require('tmi.js');
 const bot = async () => {
   client = new tmi.client({
     options: {
-      debug: true
+      debug: false
     },
     identity: {
       username: process.env.BOT_USERNAME,
