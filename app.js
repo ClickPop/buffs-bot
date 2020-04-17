@@ -48,7 +48,7 @@ app.post('/', [
 
     await bot.save();
 
-    return res.json({status: 'success', data: {bot, created: tr}});
+    return res.json({status: 'success', data: {bot, created: true}});
   } catch (err) {
     console.error(err);
     res.status(500).json({status: 'failure', errors: {error: err}})
@@ -128,6 +128,12 @@ app.delete('/', [
     if (!bot) {
       return res.status(404).json({errors: 'No user found'});
     }
+    if (bot.joined === true) {
+      await clients[bot.id].part(twitch_username);
+      bot.joined = false;
+      await bot.save();
+    }
+    delete clients[bot.id];
     await Bot.deleteOne({_id: bot.id});
     res.json({status: 'success', data: {bot, deleted: true}});
   } catch (err) {
