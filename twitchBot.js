@@ -30,7 +30,6 @@ const bot = async () => {
       console.log(`Joined ${channel}`);
     }
   });
-  client.on('reconnect', reconnect(true));
   client.on('part', (channel, username, self) => {
     if (self) {
       console.log(`Parted ${channel}`);

@@ -37,13 +37,12 @@ app.get('/status', async (req, res) => {
       if (bot.joined === true) {
         connection_status = clients[id].readyState();
       }
-
-      return {
-        id: {
-          bot,
-          connection_status,
-        },
+      const obj = new Object();
+      obj[id] = {
+        bot,
+        connection_status,
       };
+      return obj;
     });
     return res.json({
       status: 'success',
