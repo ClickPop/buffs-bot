@@ -4,6 +4,7 @@
   "description": "Bot for the buffs twitch eco-system",
   "main": "index.js",
   "scripts": {
+    "start": "node app.js",
     "server": "nodemon app.js"
   },
   "keywords": [],
