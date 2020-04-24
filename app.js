@@ -6,6 +6,8 @@ const tmi = require('./twitchBot');
 const connectDB = require('./db');
 const Bot = require('./schema');
 const axios = require('axios');
+const Hashids = require('hashids/cjs');
+const hashids = new Hashids(process.env.SALT || ENV['SALT'], 32);
 app = express();
 app.use(bodyParser.json());
 // app.use(authenticate);
@@ -39,45 +41,40 @@ const authenticate = async (req, res, next) => {
   }
 
   try {
-    const auth = await axios.post(
-      `https://id.twitch.tv/oauth2/token?grant_type=refresh_token&refresh_token=${
-        req.headers.authorization
-      }&client_id=${
-        process.env.BUFFS_CLIENT_ID || ENV['BUFFS_CLIENT_ID']
-      }&client_secret=${
-        process.env.BUFFS_CLIENT_SECRET || ENV['BUFFS_CLIENT_SECRET']
-      }`
-    );
+    const auth = hashids.decode(req.headers.authorization);
 
-    access_token = auth.data['access_token'];
+    const user = await Bot.findOne({ twitch_userId: auth });
 
-    const twitch = await axios.get('https://id.twitch.tv/oauth2/validate', {
-      headers: {
-        Authorization: `OAuth ${access_token}`,
-      },
-    });
-
-    req.userInfo = {
-      twitch_username: twitch.data.login,
-      twitch_userId: twitch.data['user_id'],
-    };
-    next();
-  } catch (err) {
-    if (err.response) {
-      console.error(err.response.status, err.response.data);
-      return res
-        .status(err.response.status)
-        .json({ errors: { error: err.response.data } });
+    if (!user) {
+      return res.status(422).json({
+        errors: { error: 'Missing or invalid authorization header' },
+      });
     }
 
-    console.error(err, err);
+    req.userInfo = {
+      twitch_username: user.twitch_username,
+      twitch_userId: user.twitch_userId,
+    };
+
+    next();
+  } catch (err) {
+    console.error(err);
     return res.status(500).json({ errors: { error: err } });
   }
 };
 
+app.get('/', async (req, res) => {});
+
 //GET route to get the status of all bots.
 app.get('/status', authenticate, async (req, res) => {
   try {
+    if (
+      req.userInfo.twitch_userId !== '175840543' &&
+      req.userInfo.twitch_userId !== '36859372' &&
+      req.userInfo.twitch_userId !== '47810429'
+    ) {
+      return res.status(401).json({ errors: { error: 'Unauthorized' } });
+    }
     const botsData = await Bot.find();
     const bots = botsData.map((bot) => {
       const id = bot.id;
@@ -109,7 +106,7 @@ app.get('/status', authenticate, async (req, res) => {
 app.get('/status/:twitch_userId', authenticate, async (req, res) => {
   const { twitch_userId } = req.userInfo;
 
-  if (twitch_userId !== req.params['twitch_userId']) {
+  if (twitch_userId !== req.params.twitch_userId) {
     return res.status(401).json({
       errors: { error: 'User ID does not match authorization token' },
     });
