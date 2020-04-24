@@ -8,6 +8,7 @@ const Bot = require('./schema');
 const axios = require('axios');
 app = express();
 app.use(bodyParser.json());
+// app.use(authenticate);
 connectDB();
 const clients = [];
 
@@ -30,8 +31,47 @@ setInterval(() => {
   axios.get('http://buffsbot.herokuapp.com/status');
 }, 1000 * 60 * 10);
 
+const authenticate = async (req, res, next) => {
+  if (!req.headers.authorization) {
+    return res
+      .status(422)
+      .json({ errors: { error: 'Missing or invalid authorization header' } });
+  }
+
+  try {
+    const auth = await axios.post(
+      `https://id.twitch.tv/oauth2/token?grant_type=refresh_token&refresh_token=${
+        req.headers.authorization
+      }&client_id=${
+        process.env.BUFFS_CLIENT_ID || ENV['BUFFS_CLIENT_ID']
+      }&client_secret=${
+        process.env.BUFFS_CLIENT_SECRET || ENV['BUFFS_CLIENT_SECRET']
+      }`
+    );
+
+    access_token = auth.data['access_token'];
+
+    const twitch = await axios.get('https://id.twitch.tv/oauth2/validate', {
+      headers: {
+        Authorization: `OAuth ${access_token}`,
+      },
+    });
+
+    req.userInfo = {
+      twitch_username: twitch.data.login,
+      twitch_userId: twitch.data['user_id'],
+    };
+    next();
+  } catch (err) {
+    console.error(err.response.status, err.response.data);
+    return res
+      .status(err.response.status)
+      .json({ errors: { error: err.response.data } });
+  }
+};
+
 //GET route to get the status of all bots.
-app.get('/status', async (req, res) => {
+app.get('/status', authenticate, async (req, res) => {
   try {
     const botsData = await Bot.find();
     const bots = botsData.map((bot) => {
@@ -61,8 +101,15 @@ app.get('/status', async (req, res) => {
 });
 
 // GET route to get the current status of a bot
-app.get('/status/:twitch_userId', async (req, res) => {
-  const { twitch_userId } = req.params;
+app.get('/status/:twitch_userId', authenticate, async (req, res) => {
+  const { twitch_userId } = req.userInfo;
+
+  if (twitch_userId !== req.params['twitch_userId']) {
+    return res.status(401).json({
+      errors: { error: 'User ID does not match authorization token' },
+    });
+  }
+
   try {
     let bot = await Bot.findOne({ twitch_userId });
 
@@ -91,20 +138,22 @@ app.get('/status/:twitch_userId', async (req, res) => {
 // POST route to create a bot
 app.post(
   '/create',
-  [
-    check('twitch_username', 'No twitch username specified')
-      .exists()
-      .isString(),
-    check('twitch_userId', 'No twitch user id specified').exists(),
-  ],
+  // [
+  //   check('twitch_username', 'No twitch username specified')
+  //     .exists()
+  //     .isString(),
+  //   check('twitch_userId', 'No twitch user id specified').exists(),
+  // ],
+  authenticate,
   async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(422).json({ errors: errors.array() });
-    }
+    // const errors = validationResult(req);
+    // if (!errors.isEmpty()) {
+    //   return res.status(422).json({ errors: errors.array() });
+    // }
 
     try {
-      const { twitch_username, twitch_userId } = req.body;
+      // const { twitch_username, twitch_userId } = req.body;
+      const { twitch_username, twitch_userId } = req.userInfo;
 
       let bot = await Bot.findOne({ twitch_userId });
 
@@ -140,11 +189,12 @@ app.post(
 // PUT route to join or part a channel or update the username of a bot
 app.put(
   '/action',
+  authenticate,
   [
-    check('twitch_username', 'No twitch username specified')
-      .exists()
-      .isString(),
-    check('twitch_userId', 'No twitch user id specified').exists(),
+    // check('twitch_username', 'No twitch username specified')
+    //   .exists()
+    //   .isString(),
+    // check('twitch_userId', 'No twitch user id specified').exists(),
     check('action', 'Invalid action specified')
       .exists()
       .isString()
@@ -160,7 +210,8 @@ app.put(
     }
 
     try {
-      const { twitch_username, twitch_userId, action } = req.body;
+      const { twitch_username, twitch_userId } = req.userInfo;
+      const { action } = req.body;
 
       let bot = await Bot.findOne({ twitch_userId });
 
@@ -233,15 +284,16 @@ app.put(
 // DELETE route to remove a bot
 app.delete(
   '/delete',
-  [check('twitch_userId', 'No twitch user id specified').exists()],
+  authenticate,
+  // [check('twitch_userId', 'No twitch user id specified').exists()],
   async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(422).json({ errors: errors.array() });
-    }
+    // const errors = validationResult(req);
+    // if (!errors.isEmpty()) {
+    //   return res.status(422).json({ errors: errors.array() });
+    // }
 
     try {
-      const { twitch_userId } = req.body;
+      const { twitch_userId } = req.userInfo;
 
       let bot = await Bot.findOne({ twitch_userId });
 
