@@ -1,6 +1,5 @@
 require('dotenv').config();
 const tmi = require('tmi.js');
-const reconnect = require('./app');
 
 const bot = async () => {
   client = new tmi.client({
@@ -45,7 +44,7 @@ function onMessageHandler(from, context, msg, self) {
   }
 
   const commandName = msg.trim();
-  if (commandName === '!buffs') {
+  if (commandName === '!buffs' && from.slice(1) !== context.username) {
     client.say(
       from,
       `@${
@@ -58,3 +57,5 @@ function onMessageHandler(from, context, msg, self) {
 }
 
 module.exports = bot;
+
+const onJoinHandler = () => {};
