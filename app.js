@@ -5,6 +5,7 @@ const { validationResult, check } = require('express-validator');
 const tmi = require('./twitchBot');
 const connectDB = require('./db');
 const Bot = require('./schema');
+const axios = require('axios');
 app = express();
 app.use(bodyParser.json());
 connectDB();
@@ -23,6 +24,11 @@ const clients = [];
     }
   });
 })();
+
+// Call the heroku app every 10 minutes to keep it from sleeping
+setInterval(() => {
+  axios.get('http://buffsbot.herokuapp.com/status');
+}, 1000 * 60 * 10);
 
 //GET route to get the status of all bots.
 app.get('/status', async (req, res) => {
