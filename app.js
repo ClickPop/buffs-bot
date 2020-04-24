@@ -12,7 +12,7 @@ const clients = [];
 
 // Function to load all joined entries from the database into memory
 // and instantiate a tmi object for each then join the user channel
-const reconnect = async (error) => {
+(async function (error) {
   if (error) {
     console.error('Reconnecting bots...');
   }
@@ -22,10 +22,7 @@ const reconnect = async (error) => {
       clients[bot.id] = await tmi();
     }
   });
-};
-
-// Running reconnect function when server starts
-reconnect();
+})();
 
 //GET route to get the status of all bots.
 app.get('/status', async (req, res) => {
@@ -39,22 +36,21 @@ app.get('/status', async (req, res) => {
       }
       const obj = new Object();
       obj[id] = {
-        bot,
+        joined: bot.joined,
+        twitch_username: bot.twitch_username,
+        twitch_userId: bot.twitch_userId,
         connection_status,
       };
       return obj;
     });
     return res.json({
-      status: 'success',
       data: {
         bots,
       },
     });
   } catch (err) {
     console.error(err);
-    return res
-      .status(500)
-      .json({ status: 'failure', errors: { error: JSON.stringify(err) } });
+    return res.status(500).json({ errors: { error: JSON.stringify(err) } });
   }
 });
 
@@ -67,13 +63,22 @@ app.get('/status/:twitch_userId', async (req, res) => {
     if (!bot) {
       return res.status(404).json({ errors: 'No user found' });
     }
-
-    return res.json({ status: 'success', bot });
+    const id = bot.id;
+    let connection_status;
+    if (bot.joined === true) {
+      connection_status = clients[id].readyState();
+    }
+    const obj = new Object();
+    obj[id] = {
+      joined: bot.joined,
+      twitch_username: bot.twitch_username,
+      twitch_userId: bot.twitch_userId,
+      connection_status,
+    };
+    return res.json({ data: { bot: obj } });
   } catch (err) {
     console.error(err);
-    return res
-      .status(500)
-      .json({ status: 'failure', errors: { error: JSON.stringify(err) } });
+    return res.status(500).json({ errors: { error: JSON.stringify(err) } });
   }
 });
 
@@ -89,9 +94,7 @@ app.post(
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res
-        .status(422)
-        .json({ status: 'failure', errors: errors.array() });
+      return res.status(422).json({ errors: errors.array() });
     }
 
     try {
@@ -100,9 +103,7 @@ app.post(
       let bot = await Bot.findOne({ twitch_userId });
 
       if (bot) {
-        return res
-          .status(404)
-          .json({ status: 'failure', errors: 'Bot already exists' });
+        return res.status(404).json({ errors: 'Bot already exists' });
       }
 
       bot = new Bot({
@@ -112,12 +113,10 @@ app.post(
 
       await bot.save();
 
-      return res.json({ status: 'success', data: { bot, created: true } });
+      return res.json({ data: { bot, created: true } });
     } catch (err) {
       console.error(err);
-      return res
-        .status(500)
-        .json({ status: 'failure', errors: { error: JSON.stringify(err) } });
+      return res.status(500).json({ errors: { error: JSON.stringify(err) } });
     }
   }
 );
@@ -141,9 +140,7 @@ app.put(
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res
-        .status(422)
-        .json({ status: 'failure', errors: errors.array() });
+      return res.status(422).json({ errors: errors.array() });
     }
 
     try {
@@ -152,9 +149,7 @@ app.put(
       let bot = await Bot.findOne({ twitch_userId });
 
       if (!bot) {
-        return res
-          .status(404)
-          .json({ status: 'failure', errors: 'No bot found' });
+        return res.status(404).json({ errors: 'No bot found' });
       }
 
       if (!clients[bot.id]) {
@@ -162,13 +157,9 @@ app.put(
       }
 
       if (action === 'part' && bot.joined !== true) {
-        return res
-          .status(422)
-          .json({ status: 'failure', errors: 'Already parted.' });
+        return res.status(422).json({ errors: 'Already parted.' });
       } else if (action === 'join' && bot.joined !== false) {
-        return res
-          .status(422)
-          .json({ status: 'failure', errors: 'Already joined.' });
+        return res.status(422).json({ errors: 'Already joined.' });
       }
 
       switch (action) {
@@ -176,24 +167,22 @@ app.put(
           await clients[bot.id].join(twitch_username);
           bot.joined = true;
           await bot.save();
-          return res.json({ status: 'success', data: bot });
+          return res.json({ data: bot });
         case 'part':
           await clients[bot.id].part(twitch_username);
           await clients[bot.id].disconnect();
           bot.joined = false;
           delete clients[bot.id];
           await bot.save();
-          return res.json({ status: 'success', data: bot });
+          return res.json({ data: bot });
         case 'updateUsername':
           bot.twitch_username = twitch_username;
           await bot.save();
-          return res.json({ status: 'success', data: bot });
+          return res.json({ data: bot });
       }
     } catch (err) {
       console.error(err);
-      return res
-        .status(500)
-        .json({ status: 'failure', errors: { error: JSON.stringify(err) } });
+      return res.status(500).json({ errors: { error: JSON.stringify(err) } });
     }
   }
 );
@@ -223,12 +212,10 @@ app.delete(
       }
       delete clients[bot.id];
       await Bot.deleteOne({ _id: bot.id });
-      res.json({ status: 'success', data: { bot, deleted: true } });
+      res.json({ data: { bot, deleted: true } });
     } catch (err) {
       console.error(err);
-      return res
-        .status(500)
-        .json({ status: 'failure', errors: { error: JSON.stringify(err) } });
+      return res.status(500).json({ errors: { error: JSON.stringify(err) } });
     }
   }
 );
@@ -238,5 +225,3 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
-
-module.exports = reconnect;
