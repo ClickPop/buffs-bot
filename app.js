@@ -81,7 +81,7 @@ app.get('/status/:twitch_userId', async (req, res) => {
       twitch_userId: bot.twitch_userId,
       connection_status,
     };
-    return res.json({ data: { bot: obj } });
+    return res.json({ data: obj });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ errors: { error: JSON.stringify(err) } });
@@ -117,9 +117,19 @@ app.post(
         twitch_userId,
       });
 
-      await bot.save();
-
-      return res.json({ data: { bot, created: true } });
+      await bot.save((err) => {
+        if (!err) {
+          res.json({
+            data: {
+              [bot.id]: {
+                twitch_username: bot.twitch_username,
+                twitch_userId: bot.twitch_userId,
+                created: true,
+              },
+            },
+          });
+        }
+      });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ errors: { error: JSON.stringify(err) } });
@@ -129,7 +139,7 @@ app.post(
 
 // PUT route to join or part a channel or update the username of a bot
 app.put(
-  '/',
+  '/action',
   [
     check('twitch_username', 'No twitch username specified')
       .exists()
@@ -170,21 +180,48 @@ app.put(
 
       switch (action) {
         case 'join':
-          await clients[bot.id].join(twitch_username);
-          bot.joined = true;
-          await bot.save();
-          return res.json({ data: bot });
+          await clients[bot.id].join(twitch_username).then(async (data) => {
+            bot.joined = true;
+            await bot.save();
+          });
+          return res.json({
+            data: {
+              [bot.id]: {
+                joined: bot.joined,
+                twitch_username: bot.twitch_username,
+                twitch_userId: bot.twitch_userId,
+              },
+            },
+          });
         case 'part':
-          await clients[bot.id].part(twitch_username);
-          await clients[bot.id].disconnect();
-          bot.joined = false;
-          delete clients[bot.id];
-          await bot.save();
-          return res.json({ data: bot });
+          await clients[bot.id].part(twitch_username).then(async (data) => {
+            await clients[bot.id].disconnect();
+            bot.joined = false;
+            delete clients[bot.id];
+            await bot.save();
+          });
+          return res.json({
+            data: {
+              [bot.id]: {
+                joined: bot.joined,
+                twitch_username: bot.twitch_username,
+                twitch_userId: bot.twitch_userId,
+              },
+            },
+          });
         case 'updateUsername':
+          let username = bot.twitch_username;
           bot.twitch_username = twitch_username;
           await bot.save();
-          return res.json({ data: bot });
+          return res.json({
+            data: {
+              [bot.id]: {
+                old_username: username,
+                new_username: bot.twitch_username,
+                twitch_userId: bot.twitch_userId,
+              },
+            },
+          });
       }
     } catch (err) {
       console.error(err);
@@ -195,7 +232,7 @@ app.put(
 
 // DELETE route to remove a bot
 app.delete(
-  '/',
+  '/delete',
   [check('twitch_userId', 'No twitch user id specified').exists()],
   async (req, res) => {
     const errors = validationResult(req);
@@ -217,8 +254,19 @@ app.delete(
         await bot.save();
       }
       delete clients[bot.id];
-      await Bot.deleteOne({ _id: bot.id });
-      res.json({ data: { bot, deleted: true } });
+      await Bot.deleteOne({ _id: bot.id }, (err) => {
+        if (!err) {
+          res.json({
+            data: {
+              [bot.id]: {
+                twitch_username: bot.twitch_username,
+                twitch_userId: bot.twitch_userId,
+                deleted: true,
+              },
+            },
+          });
+        }
+      });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ errors: { error: JSON.stringify(err) } });
