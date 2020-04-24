@@ -63,10 +63,15 @@ const authenticate = async (req, res, next) => {
     };
     next();
   } catch (err) {
-    console.error(err.response.status, err.response.data);
-    return res
-      .status(err.response.status)
-      .json({ errors: { error: err.response.data } });
+    if (err.response) {
+      console.error(err.response.status, err.response.data);
+      return res
+        .status(err.response.status)
+        .json({ errors: { error: err.response.data } });
+    }
+
+    console.error(err, err);
+    return res.status(500).json({ errors: { error: err } });
   }
 };
 
