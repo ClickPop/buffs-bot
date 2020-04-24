@@ -34,41 +34,52 @@ router.get('/status', async (req, res) => {
 });
 
 // POST route to create a bot for authenticated user
-router.post('/create', async (req, res) => {
-  try {
-    // const { twitch_username, twitch_userId } = req.body;
-    const { twitch_username, twitch_userId } = req.userInfo;
-
-    let bot = await Bot.findOne({ twitch_userId });
-
-    if (bot) {
-      return res.status(404).json({ errors: 'Bot already exists' });
+router.post(
+  '/create',
+  [
+    check('twitch_username', 'Invalid username').exists().isString,
+    check('twitch_userId', 'Invalid user ID').exists().isString,
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(422).json({ errors: errors.array() });
     }
+    try {
+      // const { twitch_username, twitch_userId } = req.body;
+      const { twitch_username, twitch_userId } = req.userInfo;
 
-    bot = new Bot({
-      twitch_username,
-      twitch_userId,
-    });
+      let bot = await Bot.findOne({ twitch_userId });
 
-    await bot.save((err) => {
-      if (!err) {
-        clients.add(bot.id);
-        res.json({
-          data: {
-            [bot.id]: {
-              twitch_username: bot.twitch_username,
-              twitch_userId: bot.twitch_userId,
-              created: true,
-            },
-          },
-        });
+      if (bot) {
+        return res.status(404).json({ errors: 'Bot already exists' });
       }
-    });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ errors: { error: JSON.stringify(err) } });
+
+      bot = new Bot({
+        twitch_username,
+        twitch_userId,
+      });
+
+      await bot.save((err) => {
+        if (!err) {
+          clients.add(bot.id);
+          res.json({
+            data: {
+              [bot.id]: {
+                twitch_username: bot.twitch_username,
+                twitch_userId: bot.twitch_userId,
+                created: true,
+              },
+            },
+          });
+        }
+      });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ errors: { error: JSON.stringify(err) } });
+    }
   }
-});
+);
 
 // PUT route to join or part a channel or update the username of the bot for the authenticated user
 router.put(
