@@ -4,7 +4,7 @@ const tmi = require('tmi.js');
 const bot = async () => {
   client = new tmi.client({
     options: {
-      clientId: process.env.CLIENT_ID,
+      clientId: process.env.CLIENT_ID || ENV['CLIENT_ID'],
       debug: false,
     },
     connection: {
@@ -12,8 +12,8 @@ const bot = async () => {
       // secure: true,
     },
     identity: {
-      username: process.env.BOT_USERNAME,
-      password: process.env.OAUTH_TOKEN,
+      username: process.env.BOT_USERNAME || ENV['BOT_USERNAME'],
+      password: process.env.OAUTH_TOKEN || ENV['OAUTH_TOKEN'],
     },
   });
 
