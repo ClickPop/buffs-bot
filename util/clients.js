@@ -2,7 +2,15 @@ const tmi = require('../twitch/twitchBot');
 const clients = [];
 
 const add = async (id, username, twitch_id) => {
-  clients[id] = await tmi();
+  const client = new Promise(async (resolve, reject) => {
+    clients[id] = await tmi();
+    if (clients[id]) {
+      resolve(clients[id]);
+    } else {
+      reject();
+    }
+  });
+  return client;
 };
 
 const join = (id, username) => {
@@ -21,6 +29,7 @@ const join = (id, username) => {
 };
 
 const part = (id, username) => {
+  console.log(clients[id]);
   const data = new Promise((resolve, reject) => {
     clients[id]
       .part(username)
