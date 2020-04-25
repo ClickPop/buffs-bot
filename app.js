@@ -1,4 +1,5 @@
 require('dotenv').config();
+const createError = require('http-errors');
 const express = require('express');
 const bodyParser = require('body-parser');
 const connectDB = require('./db/db');
@@ -24,6 +25,18 @@ setInterval(() => {
 
 app.use('/api/admin', authenticate, isAdmin, require('./routes/admin'));
 app.use('/api', authenticate, require('./routes/standard'));
+
+app.use((res, req, next) => {
+  next(createError(404));
+});
+app.use((err, req, res, next) => {
+  // set locals, only providing error in development
+  res.locals.message = err.message;
+  // render the error page
+  res.status(err.status || 500);
+  if (err.status === 404);
+  res.json(err);
+});
 
 const PORT = process.env.PORT || ENV['PORT'] || 5000;
 
