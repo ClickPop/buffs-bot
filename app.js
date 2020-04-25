@@ -11,6 +11,7 @@ const axios = require('axios');
 
 app = express();
 app.use(bodyParser.json());
+app.use(authenticate);
 
 //Connect to mongoDB
 connectDB();
@@ -23,8 +24,8 @@ setInterval(() => {
   axios.get('http://buffsbot.herokuapp.com/status');
 }, 1000 * 60 * 10);
 
-app.use('/api/admin', authenticate, isAdmin, require('./routes/admin'));
-app.use('/api', authenticate, require('./routes/standard'));
+app.use('/api/admin', isAdmin, require('./routes/admin'));
+app.use('/api', require('./routes/standard'));
 
 app.use((res, req, next) => {
   next(createError(404));
@@ -34,8 +35,11 @@ app.use((err, req, res, next) => {
   res.locals.message = err.message;
   // render the error page
   res.status(err.status || 500);
-  if (err.status === 404);
-  res.json(err);
+  if (err.status === 404) {
+    res.json(err);
+  } else {
+    res.json({ error: 'An error occurred' });
+  }
 });
 
 const PORT = process.env.PORT || ENV['PORT'] || 5000;

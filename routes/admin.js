@@ -66,17 +66,23 @@ router.get('/status/:twitch_userId', async (req, res) => {
 router.post(
   '/create',
   [
-    check('twitch_username', 'Invalid username').exists().isString,
-    check('twitch_userId', 'Invalid user ID').exists().isString,
+    check('twitch_username', 'Invalid username').exists().isString(),
+    check('twitch_userId', 'Invalid user ID').exists().isString(),
   ],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(422).json({ errors: errors.array() });
+      return res.status(422).json({ errors: errors.mapped() });
     }
 
     try {
       const { twitch_username, twitch_userId } = req.body;
+
+      if (twitch_userId !== req.userInfo.twitch_userId) {
+        return req.status(422).json({
+          errors: { error: 'Invalid Twitch ID/Username combination' },
+        });
+      }
 
       let bot = await Bot.findOne({ twitch_userId });
 
@@ -88,7 +94,6 @@ router.post(
         twitch_username,
         twitch_userId,
       });
-
       await bot.save((err) => {
         if (!err) {
           clients.add(bot.id);
@@ -126,12 +131,11 @@ router.put(
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(422).json({ errors: errors.array() });
+      return res.status(422).json({ errors: errors.mapped() });
     }
 
     try {
-      const { twitch_username, twitch_userId } = req.userInfo;
-      const { action } = req.body;
+      const { twitch_username, twitch_userId, action } = req.body;
 
       let bot = await Bot.findOne({ twitch_userId });
 
@@ -202,10 +206,10 @@ router.delete(
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(422).json({ errors: errors.array() });
+      return res.status(422).json({ errors: errors.mapped() });
     }
     try {
-      const { twitch_userId } = req.userInfo;
+      const { twitch_userId } = req.body;
 
       let bot = await Bot.findOne({ twitch_userId });
 

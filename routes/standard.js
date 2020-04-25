@@ -38,18 +38,22 @@ router.get('/status', async (req, res) => {
 router.post(
   '/create',
   [
-    check('twitch_username', 'Invalid username').exists().isString,
-    check('twitch_userId', 'Invalid user ID').exists().isString,
+    check('twitch_username', 'Invalid username').exists().isString(),
+    check('twitch_userId', 'Invalid user ID').exists().isString(),
   ],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(422).json({ errors: errors.array() });
+      return res.status(422).json({ errors: errors.mapped() });
     }
-    try {
-      // const { twitch_username, twitch_userId } = req.body;
-      const { twitch_username, twitch_userId } = req.userInfo;
 
+    const { twitch_username, twitch_userId } = req.userInfo;
+
+    if (twitch_userId !== req.auth) {
+      return res.status(401).json({ errors: { error: 'Unauthorized' } });
+    }
+
+    try {
       let bot = await Bot.findOne({ twitch_userId });
 
       if (bot) {
@@ -96,7 +100,7 @@ router.put(
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(422).json({ errors: errors.array() });
+      return res.status(422).json({ errors: errors.mapped() });
     }
 
     try {

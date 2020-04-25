@@ -12,17 +12,17 @@ const authenticate = async (req, res, next) => {
   }
 
   try {
-    const auth = hashids.decode(req.headers.authorization);
+    const auth = hashids.decode(req.headers.authorization)[0];
 
     if (!req.path.includes('create')) {
       const user = await Bot.findOne({ twitch_userId: auth });
 
       if (!user) {
         return res.status(422).json({
-          errors: { error: 'Missing or invalid authorization header' },
+          errors: { error: 'Bot does not exist' },
         });
       }
-
+      req.auth = auth.toString();
       req.userInfo = {
         twitch_username: user.twitch_username,
         twitch_userId: user.twitch_userId,
@@ -39,8 +39,18 @@ const authenticate = async (req, res, next) => {
         },
       });
 
-      console.log(twitch.data.data[0].id === auth);
-      return res.json({ data: 'test' });
+      const twitch_userId = twitch.data.data[0].id;
+      const twitch_username = twitch.data.data[0].login;
+      if (twitch_userId !== req.body.twitch_userId) {
+        return res.status(422).json({
+          errors: { error: 'Invalid twitch ID and username combination' },
+        });
+      }
+      req.auth = auth.toString();
+      req.userInfo = {
+        twitch_userId,
+        twitch_username,
+      };
     }
     next();
   } catch (err) {
