@@ -13,7 +13,11 @@ const authenticate = async (req, res, next) => {
 
   try {
     const auth = hashids.decode(req.headers.authorization)[0];
-
+    if (!auth) {
+      return res
+        .status(401)
+        .json({ error: { errors: 'Missing or invalid authorization header' } });
+    }
     if (!req.path.includes('create')) {
       const user = await Bot.findOne({ twitch_userId: auth });
 
