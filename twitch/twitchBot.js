@@ -18,7 +18,25 @@ const bot = () => {
       },
     });
 
-    client.on('message', onMessageHandler);
+    client.on('message', (from, context, msg, self) => {
+      if (self) {
+        return;
+      }
+
+      const commandName = msg.trim();
+      // if (commandName === '!buffs' && from.slice(1) !== context.username) {
+      if (commandName === '!buffs') {
+        console.log();
+        client.say(
+          from,
+          `@${
+            context.username
+          } Here is your referral link: buffs.app/r/${from.slice(1)}/${
+            context.username
+          }`
+        );
+      }
+    });
     client.on('connected', (addr, port) => {
       console.log(`Client connected at ${addr}:${port}`);
     });
@@ -47,25 +65,4 @@ const bot = () => {
   });
   return client;
 };
-
-function onMessageHandler(from, context, msg, self) {
-  if (self) {
-    return;
-  }
-
-  const commandName = msg.trim();
-  if (commandName === '!buffs' && from.slice(1) !== context.username) {
-    client.say(
-      from,
-      `@${
-        context.username
-      } Here is your referral link: buffs.app/r/${from.slice(1)}/${
-        context.username
-      }`
-    );
-  }
-}
-
 module.exports = bot;
-
-const onJoinHandler = () => {};
