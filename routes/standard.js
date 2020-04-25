@@ -127,9 +127,9 @@ router.put(
           return res.json({
             data: {
               bot: bot.id,
+              joined: bot.joined,
               twitch_username: bot.twitch_username,
               twitch_userId: bot.twitch_userId,
-              created: true,
             },
           });
         case 'part':
@@ -140,9 +140,9 @@ router.put(
           return res.json({
             data: {
               bot: bot.id,
+              joined: bot.joined,
               twitch_username: bot.twitch_username,
               twitch_userId: bot.twitch_userId,
-              created: true,
             },
           });
         case 'updateUsername':
@@ -152,9 +152,9 @@ router.put(
           return res.json({
             data: {
               bot: bot.id,
-              twitch_username: bot.twitch_username,
+              old_username: username,
+              new_username: bot.twitch_username,
               twitch_userId: bot.twitch_userId,
-              created: true,
             },
           });
       }
