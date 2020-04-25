@@ -45,7 +45,7 @@ router.get('/status/:twitch_userId', async (req, res) => {
     }
     let connection_status;
     if (bot.joined === true) {
-      connection_status = clients.getReadyState(id);
+      connection_status = clients.getReadyState(bot.id);
     }
     return res.json({
       data: {
