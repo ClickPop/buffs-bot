@@ -7,7 +7,7 @@ const hashids = new Hashids(process.env.SALT || ENV['SALT'], 32);
 const authenticate = async (req, res, next) => {
   if (!req.headers.authorization) {
     return res
-      .status(422)
+      .status(401)
       .json({ errors: { error: 'Missing or invalid authorization header' } });
   }
 
@@ -18,7 +18,7 @@ const authenticate = async (req, res, next) => {
       const user = await Bot.findOne({ twitch_userId: auth });
 
       if (!user) {
-        return res.status(422).json({
+        return res.status(404).json({
           errors: { error: 'Bot does not exist' },
         });
       }
