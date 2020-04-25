@@ -37,12 +37,13 @@ app.use((res, req, next) => {
   next(createError(404));
 });
 app.use((err, req, res, next) => {
-  res.status(err.status || 500);
-  if (err.status === 404) {
-    res.json(err);
-  } else {
-    res.json({ error: 'An error occurred' });
-  }
+  res
+    .status(err.status || 500)
+    .json(
+      { errors: { error: err } } || {
+        errors: { error: 'A server error occurred' },
+      }
+    );
 });
 
 const PORT = process.env.PORT || ENV['PORT'] || 5000;
