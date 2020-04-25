@@ -29,7 +29,6 @@ const join = (id, username) => {
 };
 
 const part = (id, username) => {
-  console.log(clients[id]);
   const data = new Promise((resolve, reject) => {
     clients[id]
       .part(username)
