@@ -24,9 +24,7 @@ const bot = () => {
       }
 
       const commandName = msg.trim();
-      // if (commandName === '!buffs' && from.slice(1) !== context.username) {
-      if (commandName === '!buffs') {
-        console.log();
+      if (commandName === '!buffs' && from.slice(1) !== context.username) {
         client.say(
           from,
           `@${
