@@ -14,14 +14,13 @@ router.get('/status', async (req, res) => {
       if (bot.joined === true) {
         connection_status = clients.getReadyState(id);
       }
-      const obj = new Object();
-      obj[id] = {
+      return {
+        bot: bot.id,
         joined: bot.joined,
         twitch_username: bot.twitch_username,
         twitch_userId: bot.twitch_userId,
         connection_status,
       };
-      return obj;
     });
     return res.json({
       data: {
@@ -44,19 +43,19 @@ router.get('/status/:twitch_userId', async (req, res) => {
     if (!bot) {
       return res.status(404).json({ errors: 'No user found' });
     }
-    const id = bot.id;
     let connection_status;
     if (bot.joined === true) {
       connection_status = clients.getReadyState(id);
     }
-    const obj = new Object();
-    obj[id] = {
-      joined: bot.joined,
-      twitch_username: bot.twitch_username,
-      twitch_userId: bot.twitch_userId,
-      connection_status,
-    };
-    return res.json({ data: obj });
+    return res.json({
+      data: {
+        bot: bot.id,
+        joined: bot.joined,
+        twitch_username: bot.twitch_username,
+        twitch_userId: bot.twitch_userId,
+        connection_status,
+      },
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ errors: { error: JSON.stringify(err) } });
@@ -95,11 +94,10 @@ router.post(
           clients.add(bot.id);
           res.json({
             data: {
-              [bot.id]: {
-                twitch_username: bot.twitch_username,
-                twitch_userId: bot.twitch_userId,
-                created: true,
-              },
+              bot: bot.id,
+              twitch_username: bot.twitch_username,
+              twitch_userId: bot.twitch_userId,
+              created: true,
             },
           });
         }
@@ -158,11 +156,10 @@ router.put(
           await bot.save();
           return res.json({
             data: {
-              [bot.id]: {
-                joined: bot.joined,
-                twitch_username: bot.twitch_username,
-                twitch_userId: bot.twitch_userId,
-              },
+              bot: bot.id,
+              joined: bot.joined,
+              twitch_username: bot.twitch_username,
+              twitch_userId: bot.twitch_userId,
             },
           });
         case 'part':
@@ -172,11 +169,10 @@ router.put(
           await bot.save();
           return res.json({
             data: {
-              [bot.id]: {
-                joined: bot.joined,
-                twitch_username: bot.twitch_username,
-                twitch_userId: bot.twitch_userId,
-              },
+              bot: bot.id,
+              joined: bot.joined,
+              twitch_username: bot.twitch_username,
+              twitch_userId: bot.twitch_userId,
             },
           });
         case 'updateUsername':
@@ -185,11 +181,10 @@ router.put(
           await bot.save();
           return res.json({
             data: {
-              [bot.id]: {
-                old_username: username,
-                new_username: bot.twitch_username,
-                twitch_userId: bot.twitch_userId,
-              },
+              bot: bot.id,
+              old_username: username,
+              new_username: bot.twitch_username,
+              twitch_userId: bot.twitch_userId,
             },
           });
       }
@@ -225,11 +220,10 @@ router.delete(
         if (!err) {
           res.json({
             data: {
-              [bot.id]: {
-                twitch_username: bot.twitch_username,
-                twitch_userId: bot.twitch_userId,
-                deleted: true,
-              },
+              bot: bot.id,
+              twitch_username: bot.twitch_username,
+              twitch_userId: bot.twitch_userId,
+              deleted: true,
             },
           });
         }
