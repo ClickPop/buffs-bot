@@ -110,7 +110,7 @@ router.put(
       }
 
       if (!clients.getBot(bot.id)) {
-        clients.add(bot.id);
+        await clients.add(bot.id);
       }
 
       if (action === 'part' && bot.joined !== true) {

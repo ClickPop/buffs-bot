@@ -7,7 +7,7 @@ const reconnect = async () => {
   let bots = await Bot.find();
   bots.forEach(async (bot, index) => {
     if (bot.joined === true) {
-      clients.add(bot.id);
+      await clients.add(bot.id);
     }
   });
 };
