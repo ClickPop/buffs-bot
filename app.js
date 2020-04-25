@@ -21,9 +21,16 @@ reconnect();
 
 //Call the heroku app every 10 minutes to keep it from sleeping
 setInterval(() => {
-  axios.get('http://buffsbot.herokuapp.com/status');
+  axios.get('http://buffsbot.herokuapp.com/');
 }, 1000 * 60 * 10);
 
+app.use('/', (req, res) => {
+  res.json({
+    data: {
+      message: 'WELCOME TO THE BUFFS BOT API',
+    },
+  });
+});
 app.use('/api/admin', isAdmin, require('./routes/admin'));
 app.use('/api', require('./routes/standard'));
 
