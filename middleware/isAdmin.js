@@ -1,9 +1,7 @@
+require('dotenv').config();
+const admins = require('../config/admins');
 const isAdmin = (req, res, next) => {
-  if (
-    req.auth === '175840543' ||
-    req.auth === '36859372' ||
-    req.auth === '47810429'
-  ) {
+  if (admins.includes(req.auth)) {
     req.admin = true;
     next();
   } else {
