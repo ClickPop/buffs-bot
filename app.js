@@ -10,7 +10,6 @@ const reconnect = require('./util/reconnect');
 const axios = require('axios');
 app = express();
 app.use(bodyParser.json());
-
 //Connect to mongoDB
 connectDB();
 
@@ -37,13 +36,11 @@ app.use((res, req, next) => {
   next(createError(404));
 });
 app.use((err, req, res, next) => {
-  res
-    .status(err.status || 500)
-    .json(
-      { errors: { error: err } } || {
-        errors: { error: 'A server error occurred' },
-      }
-    );
+  res.status(err.status || 500).json(
+    { errors: { error: err } } || {
+      errors: { error: 'A server error occurred' },
+    }
+  );
 });
 
 const PORT = process.env.PORT || ENV['PORT'] || 5000;
