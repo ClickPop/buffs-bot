@@ -58,7 +58,7 @@
   ## Admin
   ### These routes require you to be an admin and complete their actions based on the supplied data.
 
-  - `/api/create`
+  - `/api/admin/create`
     - method: 
       - **POST** 
     - body:
@@ -68,17 +68,17 @@
         - value: `whatever the twitch username is`
     - description: 
       - Creates a new bot and saves it to the database. Default joined value is false.
-  - `/api/status`
+  - `/api/admin/status`
     - method: 
       - **GET**
     - description: 
       - Gets the current status of all the bots.
-  - `/api/status/twitch_userId`
+  - `/api/admin/status/twitch_userId`
     - method: 
       - **GET**
     - description: 
       - Gets the current status of the bot specified in the URL.
-  - `/api/action`
+  - `/api/admin/action`
     - method: 
       - **PUT**
     - body
@@ -90,7 +90,7 @@
         - value: `join`, `part`, or `updateUsername`
     - description: 
       - Depending on the action attribute, will either join or part the bot, or update the username in the database.
-  - `/api/delete`
+  - `/api/admin/delete`
     - method: 
       - **DELETE**
     - body:
