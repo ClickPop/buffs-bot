@@ -118,8 +118,8 @@ router.post(
 router.put(
   '/action',
   [
-    check('twitch_username', 'Invalid username').exists().isString,
-    check('twitch_userId', 'Invalid user ID').exists().isString,
+    check('twitch_username', 'Invalid username').exists().isString(),
+    check('twitch_userId', 'Invalid user ID').exists().isString(),
     check('action', 'Invalid action specified')
       .exists()
       .isString()
@@ -133,7 +133,6 @@ router.put(
     if (!errors.isEmpty()) {
       return res.status(422).json({ errors: errors.mapped() });
     }
-
     try {
       const { twitch_username, twitch_userId, action } = req.body;
 
