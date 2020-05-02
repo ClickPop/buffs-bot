@@ -10,7 +10,7 @@ const bot = () => {
       },
       connection: {
         reconnect: true,
-        // secure: true,
+        secure: true,
       },
       identity: {
         username: process.env.BOT_USERNAME || ENV['BOT_USERNAME'],
@@ -24,7 +24,7 @@ const bot = () => {
       }
 
       const commandName = msg.trim();
-      if (commandName === '!buffs' && from.slice(1) !== context.username) {
+      if (commandName === '!buffs') {
         client.say(
           from,
           `@${

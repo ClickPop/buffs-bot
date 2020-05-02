@@ -144,7 +144,6 @@ router.put(
 
       if (!clients.getBot(bot.id)) {
         await clients.add(bot.id);
-        console.log('create bot');
       }
 
       if (action === 'part' && bot.joined !== true) {
