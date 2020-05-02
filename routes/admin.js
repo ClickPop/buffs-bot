@@ -67,7 +67,7 @@ router.post(
   '/create',
   [
     check('twitch_username', 'Invalid username').exists().isString(),
-    check('twitch_userId', 'Invalid user ID').exists().isString(),
+    check('twitch_userId', 'Invalid user ID').exists(),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -119,7 +119,7 @@ router.put(
   '/action',
   [
     check('twitch_username', 'Invalid username').exists().isString(),
-    check('twitch_userId', 'Invalid user ID').exists().isString(),
+    check('twitch_userId', 'Invalid user ID').exists(),
     check('action', 'Invalid action specified')
       .exists()
       .isString()
@@ -201,7 +201,7 @@ router.put(
 // DELETE route to remove a bot with specified user credentials
 router.delete(
   '/delete',
-  [check('twitch_userId', 'Invalid user ID').exists().isString()],
+  [check('twitch_userId', 'Invalid user ID').exists()],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
