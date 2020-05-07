@@ -1,4 +1,4 @@
-const Bot = require('../db/models/schema');
+const Bot = require('../db/models/Bot');
 const express = require('express');
 const clients = require('../util/clients');
 const { validationResult, check } = require('express-validator');
@@ -94,9 +94,9 @@ router.post(
         twitch_username,
         twitch_userId,
       });
-      await bot.save((err) => {
+      await bot.save(async (err) => {
         if (!err) {
-          clients.add(bot.id);
+          await clients.add(bot.id);
           res.json({
             data: {
               bot: bot.id,
