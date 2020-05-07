@@ -3,7 +3,6 @@ const createError = require('http-errors');
 const express = require('express');
 const bodyParser = require('body-parser');
 const connectDB = require('./db/db');
-const Bot = require('./db/models/schema');
 const authenticate = require('./middleware/authenticate');
 const isAdmin = require('./middleware/isAdmin');
 const reconnect = require('./util/reconnect');

@@ -1,9 +1,9 @@
 const tmi = require('../twitch/twitchBot');
 const clients = [];
 
-const add = async (id, username, twitch_id) => {
+const add = async (id) => {
   const client = new Promise(async (resolve, reject) => {
-    clients[id] = await tmi();
+    clients[id] = await tmi(id);
     if (clients[id]) {
       resolve(clients[id]);
     } else {

@@ -1,5 +1,5 @@
 require('dotenv').config();
-const Bot = require('../db/models/schema');
+const Bot = require('../db/models/Bot');
 const Hashids = require('hashids/cjs');
 const axios = require('axios');
 const hashids = new Hashids(process.env.SALT || ENV['SALT'], 32);
