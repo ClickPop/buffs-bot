@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-const ViewerSchema = new Schema({
+const ViewSchema = new Schema({
   twitch_username: {
     type: String,
     required: true,
@@ -11,12 +11,13 @@ const ViewerSchema = new Schema({
     ref: 'Bot',
     required: true,
   },
-  watch_time: {
-    type: Number,
-    default: 0,
+  stream: {
+    type: Schema.Types.ObjectId,
+    ref: 'Stream',
+    required: true,
   },
   joined_at: Date,
   parted_at: Date,
 });
 
-module.exports = mongoose.model('viewer', ViewerSchema);
+module.exports = mongoose.model('view', ViewSchema);

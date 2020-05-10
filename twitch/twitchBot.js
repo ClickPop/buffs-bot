@@ -1,5 +1,6 @@
 require('dotenv').config();
-const Viewer = require('../db/models/Viewer');
+const View = require('../db/models/View');
+const Stream = require('../db/models/Stream');
 const tmi = require('tmi.js');
 const axios = require('axios');
 const moment = require('moment');
@@ -9,9 +10,9 @@ let access_token;
   try {
     const res = await axios.post(
       `https://id.twitch.tv/oauth2/token?client_id=${
-        process.env.CLIENT_ID || ENV['CLIENT_ID']
+        process.env.CLIENT_ID || ENV['BUFFS_CLIENT_ID']
       }&client_secret=${
-        process.env.CLIENT_SECRET || ENV['CLIENT_SECRET']
+        process.env.CLIENT_SECRET || ENV['BUFFS_CLIENT_SECRET']
       }&grant_type=client_credentials`
     );
     access_token = res.data.access_token;
@@ -22,9 +23,9 @@ let access_token;
     try {
       const res = await axios.post(
         `https://id.twitch.tv/oauth2/token?client_id=${
-          process.env.CLIENT_ID || ENV['CLIENT_ID']
+          process.env.CLIENT_ID || ENV['BUFFS_CLIENT_ID']
         }&client_secret=${
-          process.env.CLIENT_SECRET || ENV['CLIENT_SECRET']
+          process.env.CLIENT_SECRET || ENV['BUFFS_CLIENT_SECRET']
         }&grant_type=client_credentials`
       );
       access_token = res.data.access_token;
@@ -34,11 +35,52 @@ let access_token;
   }, 60 * 60 * 1000);
 })();
 
-const bot = (bot_id) => {
+const bot = async (bot) => {
+  const { id } = bot;
+  const username = bot.twitch_username;
+  let stream;
+  let twitch_streamId;
+  let isStreaming = false;
+  let stream_data;
+  setInterval(async () => {
+    try {
+      stream_data = await axios.get(
+        `https://api.twitch.tv/helix/streams?user_login=${username}`,
+        {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+            'Client-ID': process.env.CLIENT_ID || ENV['CLIENT_ID'],
+          },
+        }
+      );
+      stream = await Stream.find({ twitch_streamId });
+      if (stream_data.data.data.length > 0) {
+        twitch_streamId = stream_data.data.data.id;
+        if (!stream) {
+          stream = new Stream({
+            twitch_streamId,
+            bot: id,
+            started_at: stream_data.data.data.started_at,
+          });
+        }
+        isStreaming = true;
+      } else if (stream_data.data.data.length < 1 && stream) {
+        stream.ended_at = moment().utc();
+        stream.stream_length = moment()
+          .utc()
+          .diff(moment(stream.started_at).utc(), 'minutes');
+        await stream.save;
+        isStreaming = false;
+        stream = undefined;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, 1000 * 60 * 5);
   const client = new Promise(async (resolve, reject) => {
     const client = new tmi.client({
       options: {
-        clientId: process.env.CLIENT_ID || ENV['CLIENT_ID'],
+        clientId: process.env.CLIENT_ID || ENV['BUFFS_CLIENT_ID'],
         debug: false,
       },
       connection: {
@@ -47,7 +89,7 @@ const bot = (bot_id) => {
       },
       identity: {
         username: process.env.BOT_USERNAME || ENV['BOT_USERNAME'],
-        password: process.env.OAUTH_TOKEN || ENV['OAUTH_TOKEN'],
+        password: process.env.OAUTH_TOKEN || ENV['BUFFS_OAUTH_TOKEN'],
       },
     });
 
@@ -80,31 +122,27 @@ const bot = (bot_id) => {
         return;
       }
       if (knownBots.includes(username)) return;
-      const isStreaming = await axios.get(
-        `https://api.twitch.tv/helix/streams?user_login=${channel.slice(1)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${access_token}`,
-            'Client-ID': process.env.CLIENT_ID || ENV['CLIENT_ID'],
-          },
-        }
-      );
-      // if (isStreaming.data.data.length < 1) return;
+      if (!isStreaming) return;
 
       if (username === channel.slice(1)) return;
-      let viewer = await Viewer.findOne({
-        $and: [{ twitch_username: username }, { bot: bot_id }],
+      let view = await View.findOne({
+        $and: [
+          { twitch_username: username },
+          { bot: id },
+          { stream: stream.id },
+        ],
       });
-      if (!viewer) {
-        viewer = new Viewer({
+      if (!view) {
+        view = new View({
           twitch_username: username,
-          bot: bot_id,
+          bot: id,
+          stream: stream.id,
         });
       }
       now = moment().utc();
-      viewer.joined_at = moment().utc();
-      viewer.parted_at = undefined;
-      await viewer.save();
+      view.joined_at = moment().utc();
+      view.parted_at = undefined;
+      await view.save();
       console.log('join', now.format('HH:mm'));
     });
     client.on('part', async (channel, username, self) => {
@@ -112,29 +150,26 @@ const bot = (bot_id) => {
         console.log(`Parted ${channel}`);
         return;
       }
-      if (knownBots.includes(username)) return;
-      const isStreaming = await axios.get(
-        `https://api.twitch.tv/helix/streams?user_login=${channel.slice(1)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${access_token}`,
-            'Client-ID': process.env.CLIENT_ID || ENV['CLIENT_ID'],
-          },
-        }
-      );
-      // if (isStreaming.data.data.length < 1) return;
+      if (!isStreaming) return;
 
       if (username === channel.slice(1)) return;
-      let viewer = await Viewer.findOne({
-        $and: [{ twitch_username: username }, { bot: bot_id }],
-      });
+      let view = await View.findOne({
+        $and: [
+          { twitch_username: username },
+          { bot: id },
+          { stream: stream.id },
+        ],
+      }).populate('stream');
 
-      if (!viewer) return;
-      const now = moment().utc();
-      const then = moment(viewer.joined_at).utc();
-      viewer.parted_at = now;
-      viewer.watch_time = now.diff(then, 'minutes');
-      await viewer.save();
+      if (!view) return;
+      let now;
+      if (view.stream.ended_at) {
+        now = view.stream.ended_at;
+      } else {
+        now = moment().utc();
+      }
+      view.parted_at = now;
+      await view.save();
       console.log('part', now.format('HH:mm'));
     });
     await client

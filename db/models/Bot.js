@@ -4,17 +4,17 @@ const Schema = mongoose.Schema;
 const BotSchema = new Schema({
   twitch_username: {
     type: String,
-    required: true
+    required: true,
   },
   twitch_userId: {
     type: String,
-    required: true
+    required: true,
   },
   joined: {
     type: Boolean,
     required: true,
-    default: false
-  }
+    default: false,
+  },
 });
 
 module.exports = mongoose.model('bot', BotSchema);
