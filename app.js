@@ -11,7 +11,6 @@ app = express();
 app.use(bodyParser.json());
 //Connect to mongoDB
 connectDB();
-
 //Initialize and reconnect bots if server restarted
 reconnect();
 
@@ -23,6 +22,7 @@ app.get('/', (req, res) => {
     },
   });
 });
+app.use('/api/webhook', require('./routes/webhooks'));
 //Authentication Middleware
 app.use(authenticate);
 //Admin routes

@@ -2,85 +2,35 @@ require('dotenv').config();
 const View = require('../db/models/View');
 const Stream = require('../db/models/Stream');
 const tmi = require('tmi.js');
-const axios = require('axios');
 const moment = require('moment');
 const knownBots = require('../config/knownBots');
+const messageHandler = require('./messageHandler');
+const {
+  subscribeToWebhook,
+  unsubscribeFromWebhook,
+  resubscribeToWebhooks,
+} = require('./webhookSubscriptions');
+const getAccessToken = require('../util/getTwitchAccessToken');
 let access_token;
 (async () => {
-  try {
-    const res = await axios.post(
-      `https://id.twitch.tv/oauth2/token?client_id=${
-        process.env.CLIENT_ID || ENV['BUFFS_CLIENT_ID']
-      }&client_secret=${
-        process.env.CLIENT_SECRET || ENV['BUFFS_CLIENT_SECRET']
-      }&grant_type=client_credentials`
-    );
-    access_token = res.data.access_token;
-  } catch (err) {
-    console.error(err);
-  }
+  access_token = await getAccessToken();
+  // await resubscribeToWebhooks(access_token);
   setInterval(async () => {
-    try {
-      const res = await axios.post(
-        `https://id.twitch.tv/oauth2/token?client_id=${
-          process.env.CLIENT_ID || ENV['BUFFS_CLIENT_ID']
-        }&client_secret=${
-          process.env.CLIENT_SECRET || ENV['BUFFS_CLIENT_SECRET']
-        }&grant_type=client_credentials`
-      );
-      access_token = res.data.access_token;
-    } catch (err) {
-      console.error(err);
-    }
+    access_token = await getAccessToken();
   }, 60 * 60 * 1000);
+  setInterval(async () => {
+    // await resubscribeToWebhooks(access_token);
+  }, 604800 * 1000);
 })();
-
 const bot = async (bot) => {
-  const { id } = bot;
+  const { id, twitch_userId } = bot;
   const username = bot.twitch_username;
   let stream;
-  let twitch_streamId;
-  let isStreaming = false;
-  let stream_data;
-  setInterval(async () => {
-    try {
-      stream_data = await axios.get(
-        `https://api.twitch.tv/helix/streams?user_login=${username}`,
-        {
-          headers: {
-            Authorization: `Bearer ${access_token}`,
-            'Client-ID': process.env.CLIENT_ID || ENV['CLIENT_ID'],
-          },
-        }
-      );
-      stream = await Stream.find({ twitch_streamId });
-      if (stream_data.data.data.length > 0) {
-        twitch_streamId = stream_data.data.data.id;
-        if (!stream) {
-          stream = new Stream({
-            twitch_streamId,
-            bot: id,
-            started_at: stream_data.data.data.started_at,
-          });
-        }
-        isStreaming = true;
-      } else if (stream_data.data.data.length < 1 && stream) {
-        stream.ended_at = moment().utc();
-        stream.stream_length = moment()
-          .utc()
-          .diff(moment(stream.started_at).utc(), 'minutes');
-        await stream.save;
-        isStreaming = false;
-        stream = undefined;
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }, 1000 * 60 * 5);
+  let isStreaming;
   const client = new Promise(async (resolve, reject) => {
     const client = new tmi.client({
       options: {
-        clientId: process.env.CLIENT_ID || ENV['BUFFS_CLIENT_ID'],
+        clientId: process.env.BUFFS_CLIENT_ID || ENV['BUFFS_CLIENT_ID'],
         debug: false,
       },
       connection: {
@@ -89,28 +39,14 @@ const bot = async (bot) => {
       },
       identity: {
         username: process.env.BOT_USERNAME || ENV['BOT_USERNAME'],
-        password: process.env.OAUTH_TOKEN || ENV['BUFFS_OAUTH_TOKEN'],
+        password: process.env.BUFFS_OAUTH_TOKEN || ENV['BUFFS_OAUTH_TOKEN'],
       },
     });
 
     client.on('message', (from, context, msg, self) => {
-      if (self) {
-        return;
-      }
-
-      const commandName = msg.trim();
-      if (commandName === '!buffs') {
-        client.say(
-          from,
-          `@${
-            context.username
-          } Here is your referral link: buffs.app/r/${from.slice(1)}/${
-            context.username
-          }`
-        );
-      }
+      messageHandler(client, from, context, msg, self);
     });
-    client.on('connected', (addr, port) => {
+    client.on('connected', async (addr, port) => {
       console.log(`Client connected at ${addr}:${port}`);
     });
     client.on('disconnected', (reason) => {
@@ -119,11 +55,11 @@ const bot = async (bot) => {
     client.on('join', async (channel, username, self) => {
       if (self) {
         console.log(`Joined ${channel}`);
+        await subscribeToWebhook(twitch_userId, access_token);
         return;
       }
-      if (knownBots.includes(username)) return;
       if (!isStreaming) return;
-
+      if (knownBots.includes(username)) return;
       if (username === channel.slice(1)) return;
       let view = await View.findOne({
         $and: [
@@ -148,10 +84,11 @@ const bot = async (bot) => {
     client.on('part', async (channel, username, self) => {
       if (self) {
         console.log(`Parted ${channel}`);
+        await unsubscribeFromWebhook(twitch_userId, access_token);
         return;
       }
       if (!isStreaming) return;
-
+      if (knownBots.includes(username)) return;
       if (username === channel.slice(1)) return;
       let view = await View.findOne({
         $and: [
