@@ -13,7 +13,6 @@ const StreamSchema = new Schema({
   },
   started_at: Date,
   ended_at: Date,
-  stream_length: Number,
 });
 
 module.exports = mongoose.model('stream', StreamSchema);

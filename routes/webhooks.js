@@ -2,28 +2,43 @@ const express = require('express');
 const router = express.Router();
 const clients = require('../util/clients');
 const Bot = require('../db/models/Bot');
+const Stream = require('../db/models/Stream');
+const moment = require('moment');
 
-router.get('/', (req, res) => {
+router.get('/:id', (req, res) => {
   res.send(req.query['hub.challenge']);
 });
 
-router.post('/', async (req, res) => {
-  console.log(req.body.data ? true : false);
-  if (req.body.data.length < 1) return res.send();
+router.post('/:id', async (req, res) => {
   const { data } = req.body;
+  const twitch_userId = req.params.id;
+  const bot = await Bot.findOne({ twitch_userId });
+  if (!bot) {
+    console.error('Bot does not exist');
+    return res.send();
+  }
+  if (data.length < 1) {
+    const stream = await Stream.findOne({ bot: bot.id });
+    if (!stream) {
+      console.error('Stream not found');
+      return res.send();
+    }
+    stream.ended_at = moment().utc();
+    await stream.save();
+    return res.send();
+  }
   data.forEach(async (item) => {
-    const { id, user_id, user_name } = item;
-    const bot = await Bot.findOne({ twitch_userId: user_id });
-    if (!bot) {
-      console.error('Bot does not exist');
-      return res.send();
-    }
+    const { id } = item;
     const client = await clients.getBot(bot.id);
-    if (!client) {
-      console.error('Client does not exist');
-      return res.send();
+    if (!client && bot.joined) {
+      clients.add(bot);
     }
-    console.log(bot);
+    const stream = new Stream({
+      twitch_streamId: id,
+      bot: bot.id,
+      started_at: moment().utc(),
+    });
+    await stream.save();
   });
   return res.send();
 });

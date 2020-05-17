@@ -1,5 +1,8 @@
 require('dotenv').config();
 const axios = require('axios');
+const callback =
+  process.env.STREAM_SUBSCRIPTION_CALLBACK ||
+  ENV['STREAM_SUBSCRIPTION_CALLBACK'];
 
 const subscribeToWebhook = (twitch_userId, access_token) => {
   return new Promise(async (resolve, reject) => {
@@ -7,11 +10,9 @@ const subscribeToWebhook = (twitch_userId, access_token) => {
       const res = await axios.post(
         'https://api.twitch.tv/helix/webhooks/hub',
         {
-          'hub.callback':
-            process.env.STREAM_SUBSCRIPTION_CALLBACK ||
-            ENV['STREAM_SUBSCRIPTION_CALLBACK'],
+          'hub.callback': `${callback}/${twitch_userId}`,
           'hub.mode': 'subscribe',
-          'hub.topic': `https://api.twitch.tv/helix/stream?user_id=${twitch_userId}`,
+          'hub.topic': `https://api.twitch.tv/helix/streams?user_id=${twitch_userId}`,
           'hub.lease_seconds': 864000,
           'hub.secret': process.env.SALT || ENV['SALT'],
         },
@@ -36,11 +37,9 @@ const unsubscribeFromWebhook = async (twitch_userId, access_token) => {
       const res = await axios.post(
         'https://api.twitch.tv/helix/webhooks/hub',
         {
-          'hub.callback':
-            process.env.STREAM_SUBSCRIPTION_CALLBACK ||
-            ENV['STREAM_SUBSCRIPTION_CALLBACK'],
+          'hub.callback': `${callback}/${twitch_userId}`,
           'hub.mode': 'unsubscribe',
-          'hub.topic': `https://api.twitch.tv/helix/stream?user_id=${twitch_userId}`,
+          'hub.topic': `https://api.twitch.tv/helix/streams?user_id=${twitch_userId}`,
           'hub.lease_seconds': 864000,
           'hub.secret': process.env.SALT || ENV['SALT'],
         },

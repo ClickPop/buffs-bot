@@ -6,11 +6,6 @@ const ViewSchema = new Schema({
     type: String,
     required: true,
   },
-  bot: {
-    type: Schema.Types.ObjectId,
-    ref: 'Bot',
-    required: true,
-  },
   stream: {
     type: Schema.Types.ObjectId,
     ref: 'Stream',
