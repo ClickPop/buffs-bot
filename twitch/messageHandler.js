@@ -11,7 +11,6 @@ module.exports = (client, from, context, msg, self) => {
   if (self) {
     return;
   }
-
   const commandName = msg.trim();
   if (commandName === '!buffs') {
     buffsCommand(client, from, context);
