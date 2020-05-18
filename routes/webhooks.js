@@ -17,28 +17,36 @@ router.post('/:id', async (req, res) => {
     console.error('Bot does not exist');
     return res.send();
   }
+  let client = await clients.getBot(bot.id);
+  if (!client && bot.joined) {
+    client = await clients.add(bot);
+  }
   if (data.length < 1) {
-    const stream = await Stream.findOne({ bot: bot.id });
+    const stream = await Stream.findOne({ bot: bot.id }).sort({
+      started_at: -1,
+    });
     if (!stream) {
       console.error('Stream not found');
       return res.send();
     }
     stream.ended_at = moment().utc();
     await stream.save();
+    clients.setStreamStatus(bot.id, false);
     return res.send();
   }
   data.forEach(async (item) => {
     const { id } = item;
-    const client = await clients.getBot(bot.id);
-    if (!client && bot.joined) {
-      clients.add(bot);
+    let stream = await Stream({ twitch_streamId: id });
+    if (stream) {
+      return res.send();
     }
-    const stream = new Stream({
+    stream = new Stream({
       twitch_streamId: id,
       bot: bot.id,
       started_at: moment().utc(),
     });
     await stream.save();
+    clients.setStreamStatus(bot.id, true);
   });
   return res.send();
 });
