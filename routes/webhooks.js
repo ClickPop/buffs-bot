@@ -36,7 +36,7 @@ router.post('/:id', async (req, res) => {
   }
   data.forEach(async (item) => {
     const { id } = item;
-    let stream = await Stream({ twitch_streamId: id });
+    let stream = await Stream.findOne({ twitch_streamId: id });
     if (stream) {
       return res.send();
     }
