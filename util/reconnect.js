@@ -7,8 +7,8 @@ const reconnect = async () => {
   setTimeout(() => {
     bots.forEach(async (bot) => {
       if (bot.joined === true) {
-        // await clients.add(bot);
-        // await clients.join(bot.id, bot.twitch_username);
+        await clients.add(bot);
+        await clients.join(bot.id, bot.twitch_username);
       }
     });
   }, 1000 * 15);
