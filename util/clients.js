@@ -1,13 +1,14 @@
 const tmi = require('../twitch/twitchBot');
 const clients = [];
 
-const add = async (id, username, twitch_id) => {
+const add = async (bot) => {
   const client = new Promise(async (resolve, reject) => {
-    clients[id] = await tmi();
-    if (clients[id]) {
-      resolve(clients[id]);
-    } else {
-      reject();
+    try {
+      clients[bot.id] = await tmi(bot);
+      resolve(clients[bot.id]);
+    } catch (err) {
+      console.error(err);
+      reject(err);
     }
   });
   return client;
@@ -15,7 +16,7 @@ const add = async (id, username, twitch_id) => {
 
 const join = (id, username) => {
   const data = new Promise((resolve, reject) => {
-    clients[id]
+    clients[id].client
       .join(username)
       .then((data) => {
         resolve(data);
@@ -30,7 +31,7 @@ const join = (id, username) => {
 
 const part = (id, username) => {
   const data = new Promise((resolve, reject) => {
-    clients[id]
+    clients[id].client
       .part(username)
       .then((data) => {
         resolve(data);
@@ -45,7 +46,7 @@ const part = (id, username) => {
 
 const remove = (id) => {
   const data = new Promise((resolve, reject) => {
-    clients[id]
+    clients[id].client
       .disconnect()
       .then((data) => {
         delete clients[id];
@@ -59,12 +60,16 @@ const remove = (id) => {
   return data;
 };
 
-const getReadyState = (id) => {
-  return clients[id].readyState();
-};
-
 const getBot = (id) => {
   return clients[id];
+};
+
+const setStreamStatus = (id, status) => {
+  clients[id].setStream(status);
+};
+
+getStreamStatus = (id) => {
+  return clients[id].isStreaming();
 };
 
 module.exports = {
@@ -72,6 +77,7 @@ module.exports = {
   join,
   part,
   remove,
-  getReadyState,
   getBot,
+  setStreamStatus,
+  getStreamStatus,
 };

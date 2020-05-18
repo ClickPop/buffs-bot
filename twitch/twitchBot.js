@@ -1,11 +1,33 @@
 require('dotenv').config();
 const tmi = require('tmi.js');
-
-const bot = () => {
-  const client = new Promise(async (resolve, reject) => {
+const messageHandler = require('./messageHandler');
+const { joinHandler, partHandler } = require('./eventHandlers');
+const { resubscribeToWebhooks } = require('./webhookSubscriptions');
+const getAccessToken = require('../util/getTwitchAccessToken');
+let access_token;
+(async () => {
+  access_token = await getAccessToken();
+  // await resubscribeToWebhooks(access_token);
+  setInterval(async () => {
+    access_token = await getAccessToken();
+  }, 60 * 60 * 1000);
+  setInterval(async () => {
+    // await resubscribeToWebhooks(access_token);
+  }, 604800 * 1000);
+})();
+const bot = async (bot) => {
+  const { id, twitch_userId, twitch_username } = bot;
+  return new Promise(async (resolve, reject) => {
+    this.isStreaming = false;
+    const setStream = (status) => {
+      this.isStreaming = status;
+    };
+    const isStreaming = () => {
+      return this.isStreaming;
+    };
     const client = new tmi.client({
       options: {
-        clientId: process.env.CLIENT_ID || ENV['CLIENT_ID'],
+        clientId: process.env.BUFFS_CLIENT_ID || ENV['BUFFS_CLIENT_ID'],
         debug: false,
       },
       connection: {
@@ -14,53 +36,50 @@ const bot = () => {
       },
       identity: {
         username: process.env.BOT_USERNAME || ENV['BOT_USERNAME'],
-        password: process.env.OAUTH_TOKEN || ENV['OAUTH_TOKEN'],
+        password: process.env.BUFFS_OAUTH_TOKEN || ENV['BUFFS_OAUTH_TOKEN'],
       },
     });
 
     client.on('message', (from, context, msg, self) => {
-      if (self) {
-        return;
-      }
-
-      const commandName = msg.trim();
-      if (commandName === '!buffs') {
-        client.say(
-          from,
-          `@${
-            context.username
-          } Here is your referral link: buffs.app/r/${from.slice(1)}/${
-            context.username
-          }`
-        );
-      }
+      messageHandler(client, from, context, msg, self);
     });
-    client.on('connected', (addr, port) => {
+    client.on('connected', async (addr, port) => {
       console.log(`Client connected at ${addr}:${port}`);
     });
     client.on('disconnected', (reason) => {
       console.log('Connection closed: ', { reason });
     });
-    client.on('join', (channel, username, self) => {
-      if (self) {
-        console.log(`Joined ${channel}`);
-      }
+    client.on('join', async (channel, username, self) => {
+      await joinHandler(
+        self,
+        channel,
+        twitch_userId,
+        access_token,
+        this.isStreaming,
+        username,
+        id
+      );
     });
-    client.on('part', (channel, username, self) => {
-      if (self) {
-        console.log(`Parted ${channel}`);
-      }
+    client.on('part', async (channel, username, self) => {
+      await partHandler(
+        self,
+        channel,
+        twitch_userId,
+        access_token,
+        this.isStreaming,
+        username,
+        id
+      );
     });
     await client
       .connect()
-      .then((data) => {
-        resolve(client);
+      .then(() => {
+        resolve({ client, bot, setStream, isStreaming });
       })
       .catch((err) => {
         console.error(err);
         reject(err);
       });
   });
-  return client;
 };
 module.exports = bot;

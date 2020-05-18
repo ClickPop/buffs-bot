@@ -1,8 +1,13 @@
 require('dotenv').config();
-const Bot = require('../db/models/schema');
+const Bot = require('../db/models/Bot');
 const Hashids = require('hashids/cjs');
 const axios = require('axios');
 const hashids = new Hashids(process.env.SALT || ENV['SALT'], 32);
+const getAccessToken = require('../util/getTwitchAccessToken');
+let access_token;
+(async () => {
+  access_token = await getAccessToken();
+})();
 
 const authenticate = async (req, res, next) => {
   if (!req.headers.authorization) {
@@ -34,9 +39,8 @@ const authenticate = async (req, res, next) => {
     } else {
       const twitch = await axios.get('https://api.twitch.tv/helix/users', {
         headers: {
-          authorization: `Bearer ${
-            process.env.OAUTH_TOKEN || ENV['OAUTH_TOKEN']
-          }`,
+          authorization: `Bearer ${access_token}`,
+          'Client-ID': process.env.BUFFS_CLIENT_ID || ENV['BUFFS_CLIENT_ID'],
         },
         params: {
           login: req.body.twitch_username,

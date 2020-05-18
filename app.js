@@ -3,7 +3,6 @@ const createError = require('http-errors');
 const express = require('express');
 const bodyParser = require('body-parser');
 const connectDB = require('./db/db');
-const Bot = require('./db/models/schema');
 const authenticate = require('./middleware/authenticate');
 const isAdmin = require('./middleware/isAdmin');
 const reconnect = require('./util/reconnect');
@@ -12,7 +11,6 @@ app = express();
 app.use(bodyParser.json());
 //Connect to mongoDB
 connectDB();
-
 //Initialize and reconnect bots if server restarted
 reconnect();
 
@@ -24,6 +22,7 @@ app.get('/', (req, res) => {
     },
   });
 });
+app.use('/api/webhook', require('./routes/webhooks'));
 //Authentication Middleware
 app.use(authenticate);
 //Admin routes
