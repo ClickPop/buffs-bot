@@ -26,7 +26,7 @@ const joinHandler = async (
       if (!isStreaming) return;
       if (knownBots.includes(username)) return;
       if (username === channel.slice(1)) return;
-      let stream = await Stream.findOne({ bot: id });
+      let stream = await Stream.findOne({ bot: id }).sort({ started_at: -1 });
       if (!stream) return;
       let view = await View.findOne({
         $and: [{ twitch_username: username }, { stream: stream.id }],
@@ -38,7 +38,6 @@ const joinHandler = async (
         joined_at: moment().utc(),
       });
       await view.save();
-      console.log('join', now.format('HH:mm'));
       resolve();
     } catch (err) {
       console.error(err);
@@ -66,19 +65,16 @@ const partHandler = (
       if (!isStreaming) return;
       if (knownBots.includes(username)) return;
       if (username === channel.slice(1)) return;
-      let stream = await Stream.findOne({ bot: id });
+      let stream = await Stream.findOne({ bot: id }).sort({ started_at: -1 });
       if (!stream) return;
       let view = await View.findOne({
         $and: [{ twitch_username: username }, { stream: stream.id }],
-      })
-        .populate('stream')
-        .populate('bot');
+      });
       if (!view) return;
       view.parted_at = view.stream.ended_at
         ? view.stream.ended_at
         : moment().utc();
       await view.save();
-      console.log('part', now.format('HH:mm'));
       resolve();
     } catch (err) {
       console.error(err);
