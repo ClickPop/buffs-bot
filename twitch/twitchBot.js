@@ -17,8 +17,14 @@ let access_token;
 })();
 const bot = async (bot) => {
   const { id, twitch_userId, twitch_username } = bot;
-  let isStreaming;
   return new Promise(async (resolve, reject) => {
+    this.isStreaming = false;
+    const setStream = (status) => {
+      this.isStreaming = status;
+    };
+    const isStreaming = () => {
+      return this.isStreaming;
+    };
     const client = new tmi.client({
       options: {
         clientId: process.env.BUFFS_CLIENT_ID || ENV['BUFFS_CLIENT_ID'],
@@ -49,7 +55,7 @@ const bot = async (bot) => {
         channel,
         twitch_userId,
         access_token,
-        isStreaming,
+        this.isStreaming,
         username,
         id
       );
@@ -60,15 +66,15 @@ const bot = async (bot) => {
         channel,
         twitch_userId,
         access_token,
-        isStreaming,
+        this.isStreaming,
         username,
         id
       );
     });
     await client
       .connect()
-      .then((data) => {
-        resolve(client);
+      .then(() => {
+        resolve({ client, bot, setStream, isStreaming });
       })
       .catch((err) => {
         console.error(err);

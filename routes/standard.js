@@ -16,17 +16,12 @@ router.get('/status', async (req, res) => {
       return res.status(404).json({ errors: 'No user found' });
     }
     const id = bot.id;
-    let connection_status;
-    if (bot.joined === true) {
-      connection_status = clients.getReadyState(id);
-    }
     return res.json({
       data: {
         bot: bot.id,
         joined: bot.joined,
         twitch_username: bot.twitch_username,
         twitch_userId: bot.twitch_userId,
-        connection_status,
       },
     });
   } catch (err) {
