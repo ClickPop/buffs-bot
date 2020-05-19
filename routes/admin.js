@@ -1,8 +1,11 @@
 const Bot = require('../db/models/Bot');
 const View = require('../db/models/View');
+const Stream = require('../db/models/Stream');
 const express = require('express');
 const clients = require('../util/clients');
 const { validationResult, check } = require('express-validator');
+const moment = require('moment');
+const asyncForEach = require('../util/asyncForEach');
 const router = express.Router();
 
 //GET route to get the status of all bots.
@@ -230,36 +233,42 @@ router.delete(
 );
 
 router.get('/views', async (req, res) => {
-  const { channel, first, sortBy, sortOrder } = req.query;
-  let bot = await Bot.findOne({ twitch_userId: channel });
-  if (!bot) {
-    return res.status(404).json({ errors: 'No user found' });
+  const { twitch_userIds } = req.query;
+  let stream_count = 0;
+  let totalViews = [];
+  let bots = await Bot.find({
+    twitch_userId: {
+      $in: twitch_userIds.split(',').map((item) => {
+        return item.trim();
+      }),
+    },
+  });
+  if (!bots) {
+    return res.status(404).json({ errors: 'No bot found' });
   }
-  let num = 100;
-  let views;
-  if (first) {
-    if (!first.match(/[0-9]/g))
-      return res.status(422).json({ errors: 'Invalid pagination value' });
-    num = parseInt(first);
-    if (num > 100 || num < 1) {
-      return res.status(422).json({ errors: 'First range is 1-100.' });
+  const { from, to } = req.query;
+  await asyncForEach(bots, async (bot) => {
+    const query = {
+      bot: bot.id,
+    };
+    if (from || to) {
+      query.started_at = {};
+      if (from) query.started_at.$gte = moment(from).utc().format();
+      if (to) query.started_at.$lte = moment(to).utc().format();
     }
-  }
-  let sort = sortBy ? sortBy : 'watch_time';
-  if (
-    !['watch_time', 'twitch_username', 'joined_at', 'parted_at', 'id'].includes(
-      sort
-    )
-  )
-    return res.status(422).json({ errors: 'Invalid sort key.' });
-  let order = sortOrder ? sortOrder : 'desc';
-  if (!['asc', 'desc'].includes(order))
-    return res.status(422).json({ errors: 'Invalid sort order.' });
-
-  views = await View.find({ bot: bot.id })
-    .limit(num)
-    .sort({ [sort]: order });
-  return res.json({ views });
+    streams = await Stream.find(query);
+    if (!streams) return res.status(404).json({ errors: 'No streams found' });
+    stream_count += streams.length;
+    await asyncForEach(streams, async (stream) => {
+      let views = await View.find({ stream: stream.id });
+      totalViews.push({
+        stream,
+        view_count: views.length,
+        views,
+      });
+    });
+  });
+  return res.json({ stream_count, streams: totalViews });
 });
 
 module.exports = router;

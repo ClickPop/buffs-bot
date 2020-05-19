@@ -1,3 +1,4 @@
+require('dotenv').config();
 const Bot = require('../db/models/Bot');
 const clients = require('./clients');
 // Function to load all joined entries from the database into memory
@@ -6,7 +7,8 @@ const reconnect = async () => {
   let bots = await Bot.find();
   setTimeout(() => {
     bots.forEach(async (bot) => {
-      if (bot.joined === true) {
+      if (bot.joined === true && process.env.NODE_ENV === 'production') {
+        console.log(test);
         await clients.add(bot);
         await clients.join(bot.id, bot.twitch_username);
       }
