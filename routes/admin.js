@@ -5,6 +5,7 @@ const express = require('express');
 const clients = require('../util/clients');
 const { validationResult, check } = require('express-validator');
 const moment = require('moment');
+const asyncForEach = require('../util/asyncForEach');
 const router = express.Router();
 
 //GET route to get the status of all bots.
@@ -258,7 +259,6 @@ router.get('/views', async (req, res) => {
     streams = await Stream.find(query);
     if (!streams) return res.status(404).json({ errors: 'No streams found' });
     stream_count += streams.length;
-    console.log(streams);
     await asyncForEach(streams, async (stream) => {
       let views = await View.find({ stream: stream.id });
       totalViews.push({
@@ -270,11 +270,5 @@ router.get('/views', async (req, res) => {
   });
   return res.json({ stream_count, streams: totalViews });
 });
-
-async function asyncForEach(array, callback) {
-  for (let index = 0; index < array.length; index++) {
-    await callback(array[index], index, array);
-  }
-}
 
 module.exports = router;
