@@ -5,6 +5,7 @@ const express = require('express');
 const { validationResult, check } = require('express-validator');
 const clients = require('../util/clients');
 const moment = require('moment');
+const asyncForEach = require('../util/asyncForEach');
 const router = express.Router();
 
 // GET route to get the current bot status of the authenticated user
@@ -201,34 +202,41 @@ router.delete('/delete', async (req, res) => {
 
 router.get('/views', async (req, res) => {
   const { twitch_userId } = req.userInfo;
-  let bot = await Bot.findOne({ twitch_userId });
-  if (!bot) {
+  let stream_count = 0;
+  let totalViews = [];
+  let bots = await Bot.find({
+    twitch_userId: {
+      $in: twitch_userId.split(',').map((item) => {
+        return item.trim();
+      }),
+    },
+  });
+  if (!bots) {
     return res.status(404).json({ errors: 'No bot found' });
   }
   const { from, to } = req.query;
-  let streams = await Stream.find({
-    bot: bot.id,
-    started_at: {
-      $gte: moment(from).utc().format(),
-      $lte: moment(to).utc().format(),
-    },
-  });
-  if (!streams) return res.status(404).json({ errors: 'No streams found' });
-  totalViews = [];
-  await asyncForEach(streams, async (stream) => {
-    let views = await View.find({ stream: stream.id });
-    totalViews.push({
-      stream,
-      views,
+  await asyncForEach(bots, async (bot) => {
+    const query = {
+      bot: bot.id,
+    };
+    if (from || to) {
+      query.started_at = {};
+      if (from) query.started_at.$gte = moment(from).utc().format();
+      if (to) query.started_at.$lte = moment(to).utc().format();
+    }
+    streams = await Stream.find(query);
+    if (!streams) return res.status(404).json({ errors: 'No streams found' });
+    stream_count += streams.length;
+    await asyncForEach(streams, async (stream) => {
+      let views = await View.find({ stream: stream.id });
+      totalViews.push({
+        stream,
+        view_count: views.length,
+        views,
+      });
     });
   });
-  return res.json(totalViews);
+  return res.json({ stream_count, streams: totalViews });
 });
-
-async function asyncForEach(array, callback) {
-  for (let index = 0; index < array.length; index++) {
-    await callback(array[index], index, array);
-  }
-}
 
 module.exports = router;
