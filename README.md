@@ -14,6 +14,8 @@
   - Start server
     - `npm run server`
 
+*A quick note on local testing. For the twitch webhooks to work you will need to setup a request forwarding service like [ngrok](https://ngrok.com/).*
+
 # Available Routes
 
   ## Request info
@@ -54,6 +56,16 @@
       - **DELETE**
     - description: 
       - Deletes a bot from memory and the database.
+  - `/api/views`
+    - method:
+      - **GET**
+    - query params
+      - key: `from` *optional*
+        - value: `ISO date to set the lower bounds of returned streams`
+      - key: `to` *optional*
+        - value: `ISO date to set the upper bounds of returned streams`
+    - description
+      - Returns all streams and associated views for the twitch id of the api key that called it. If to/from are set, only the streams between those dates will be returned
 
   ## Admin
   ### These routes require you to be an admin and complete their actions based on the supplied data.
@@ -98,3 +110,15 @@
         - value: `whatever the twitch ID is`
     - description: 
       - Deletes a bot from memory and the database.
+  - `/api/admin/views`
+    - method:
+      - **GET**
+    - query params
+      - key: `twitch_userIds`
+        - value: `list of comma separated twitch id's`
+      - key: `from` *optional*
+        - value: `ISO date to set the lower bounds of returned streams`
+      - key: `to` *optional*
+        - value: `ISO date to set the upper bounds of returned streams`
+    - description
+      - Returns all streams and associated views for the given twitch id's. If to/from are set, only the streams between those dates           will be returned
