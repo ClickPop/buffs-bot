@@ -7,12 +7,14 @@ const getAccessToken = require('../util/getTwitchAccessToken');
 let access_token;
 (async () => {
   access_token = await getAccessToken();
-  await resubscribeToWebhooks(access_token);
+  if (process.env.NODE_ENV === 'production')
+    await resubscribeToWebhooks(access_token);
   setInterval(async () => {
     access_token = await getAccessToken();
   }, 60 * 60 * 1000);
   setInterval(async () => {
-    await resubscribeToWebhooks(access_token);
+    if (process.env.NODE_ENV === 'production')
+      await resubscribeToWebhooks(access_token);
   }, 604800 * 1000);
 })();
 const bot = async (bot) => {
