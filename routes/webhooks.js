@@ -3,9 +3,14 @@ const router = express.Router();
 const clients = require('../util/clients');
 const Bot = require('../db/models/Bot');
 const Stream = require('../db/models/Stream');
+const View = require('../db/models/View');
 const moment = require('moment');
+const asyncForEach = require('../util/asyncForEach');
 
 router.get('/:id', (req, res) => {
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`${req.query['hub.mode']}d: ${req.params.id}`);
+  }
   res.send(req.query['hub.challenge']);
 });
 
@@ -20,8 +25,11 @@ router.post('/:id', async (req, res) => {
   let client = await clients.getBot(bot.id);
   if (!client && bot.joined) {
     client = await clients.add(bot);
+    await clients.join(bot.id, bot.twitch_username);
   }
   if (data.length < 1) {
+    if (process.env.NODE_ENV !== 'production')
+      console.log(`${bot.twitch_username} stopped streaming`);
     const stream = await Stream.findOne({ bot: bot.id }).sort({
       started_at: -1,
     });
@@ -31,11 +39,21 @@ router.post('/:id', async (req, res) => {
     }
     stream.ended_at = moment().utc();
     await stream.save();
+    views = await View.find({
+      stream: stream.id,
+      parted_at: { $exists: false },
+    });
+    asyncForEach(views, async (view) => {
+      view.parted_at = stream.ended_at;
+      await view.save();
+    });
     clients.setStreamStatus(bot.id, false);
     return res.send();
   }
   data.forEach(async (item) => {
     const { id } = item;
+    if (process.env.NODE_ENV !== 'production')
+      console.log(`${bot.twitch_username} started streaming`);
     let stream = await Stream.findOne({ twitch_streamId: id });
     if (stream) {
       return res.send();

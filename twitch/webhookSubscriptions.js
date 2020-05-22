@@ -73,8 +73,8 @@ const resubscribeToWebhooks = (access_token) => {
       const { data } = res.data;
       data.forEach((item, index) => {
         const user_id = item.topic.slice(item.topic.indexOf('user_id=') + 8);
-        subscribeToWebhook(user_id, access_token);
-        unsubscribeFromWebhook(user_id, access_token);
+        if (item.topic.includes('buffs'))
+          subscribeToWebhook(user_id, access_token);
       });
       resolve(data);
     } catch (err) {
