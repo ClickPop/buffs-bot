@@ -1,18 +1,18 @@
-const buffsCommand = (client, from, context) => {
+const buffsCommand = (client, channel, username) => {
   client.say(
-    from,
-    `@${context.username} Here is your referral link: buffs.app/r/${from.slice(
+    channel,
+    `@${username} Here is your referral link: buffs.app/r/${channel.slice(
       1
-    )}/${context.username}`
+    )}/${username}`
   );
 };
 
-module.exports = (client, from, context, msg, self) => {
+module.exports = (client, channel, context, msg, self, isStreaming, bot_id) => {
   if (self) {
     return;
   }
   const commandName = msg.trim();
   if (commandName === '!buffs') {
-    buffsCommand(client, from, context);
+    buffsCommand(client, channel, context.username);
   }
 };

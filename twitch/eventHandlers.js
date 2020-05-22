@@ -30,8 +30,8 @@ const joinHandler = async (
       if (!stream) return;
       let view = await View.findOne({
         $and: [{ twitch_username: username }, { stream: stream.id }],
-      });
-      if (view) return;
+      }).sort({ joined_at: -1 });
+      if (view && !view.parted_at) return;
       view = new View({
         twitch_username: username,
         stream: stream.id,
@@ -68,12 +68,14 @@ const partHandler = (
       let stream = await Stream.findOne({ bot: id }).sort({ started_at: -1 });
       if (!stream) return;
       let view = await View.findOne({
-        $and: [{ twitch_username: username }, { stream: stream.id }],
-      });
+        $and: [
+          { twitch_username: username },
+          { stream: stream.id },
+          { parted_at: { $exists: false } },
+        ],
+      }).sort({ joined_at: -1 });
       if (!view) return;
-      view.parted_at = view.stream.ended_at
-        ? view.stream.ended_at
-        : moment().utc();
+      view.parted_at = moment().utc();
       await view.save();
       resolve();
     } catch (err) {
