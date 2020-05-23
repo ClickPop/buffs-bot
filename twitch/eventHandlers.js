@@ -28,6 +28,7 @@ const joinHandler = async (
       if (username === channel.slice(1)) return;
       let stream = await Stream.findOne({ bot: id }).sort({ started_at: -1 });
       if (!stream) return;
+      console.log(`${username} joined ${channel}`);
       let view = await View.findOne({
         $and: [{ twitch_username: username }, { stream: stream.id }],
       }).sort({ joined_at: -1 });
@@ -62,11 +63,11 @@ const partHandler = (
         await unsubscribeFromWebhook(twitch_userId, access_token);
         return;
       }
-      if (!isStreaming) return;
       if (knownBots.includes(username)) return;
       if (username === channel.slice(1)) return;
       let stream = await Stream.findOne({ bot: id }).sort({ started_at: -1 });
       if (!stream) return;
+      console.log(`${username} parted ${channel}`);
       let view = await View.findOne({
         $and: [
           { twitch_username: username },
@@ -75,7 +76,7 @@ const partHandler = (
         ],
       }).sort({ joined_at: -1 });
       if (!view) return;
-      view.parted_at = moment().utc();
+      view.parted_at = stream.ended_at ? stream.ended_at : moment().utc();
       await view.save();
       resolve();
     } catch (err) {
