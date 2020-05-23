@@ -30,7 +30,7 @@ const bot = async (bot) => {
     const client = new tmi.client({
       options: {
         clientId: process.env.BUFFS_CLIENT_ID || ENV['BUFFS_CLIENT_ID'],
-        debug: false,
+        debug: process.env.NODE_ENV !== 'production',
       },
       connection: {
         reconnect: true,
@@ -43,7 +43,7 @@ const bot = async (bot) => {
     });
 
     client.on('message', (from, context, msg, self) => {
-      messageHandler(client, from, context, msg, self);
+      messageHandler(client, from, context, msg, self, this.isStreaming, id);
     });
     client.on('connected', async (addr, port) => {
       console.log(`Client connected at ${addr}:${port}`);
