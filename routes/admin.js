@@ -233,20 +233,21 @@ router.delete(
 );
 
 router.get('/views', async (req, res) => {
-  const { twitch_userIds } = req.query;
+  const { twitch_userIds, twitch_usernames, from, to } = req.query;
   let stream_count = 0;
+  let totalViewCount = 0;
   let totalViews = [];
-  let bots = await Bot.find({
-    twitch_userId: {
-      $in: twitch_userIds.split(',').map((item) => {
-        return item.trim();
-      }),
-    },
-  });
+  const query = twitch_userIds
+    ? {
+        twitch_userId: {
+          $in: twitch_userIds.split(',').map((item) => item.trim()),
+        },
+      }
+    : {};
+  let bots = await Bot.find(query);
   if (!bots) {
     return res.status(404).json({ errors: 'No bot found' });
   }
-  const { from, to } = req.query;
   await asyncForEach(bots, async (bot) => {
     const query = {
       bot: bot.id,
@@ -260,7 +261,16 @@ router.get('/views', async (req, res) => {
     if (!streams) return res.status(404).json({ errors: 'No streams found' });
     stream_count += streams.length;
     await asyncForEach(streams, async (stream) => {
-      let views = await View.find({ stream: stream.id });
+      const query = twitch_usernames
+        ? {
+            stream: stream.id,
+            twitch_username: {
+              $in: twitch_usernames.split(',').map((item) => item.trim()),
+            },
+          }
+        : { stream: stream.id };
+      let views = await View.find(query);
+      totalViewCount += views.length;
       totalViews.push({
         stream,
         view_count: views.length,
@@ -268,7 +278,11 @@ router.get('/views', async (req, res) => {
       });
     });
   });
-  return res.json({ stream_count, streams: totalViews });
+  return res.json({
+    stream_count,
+    totalViews: totalViewCount,
+    streams: totalViews,
+  });
 });
 
 module.exports = router;
