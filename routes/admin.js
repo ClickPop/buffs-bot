@@ -232,57 +232,81 @@ router.delete(
   }
 );
 
-router.get('/views', async (req, res) => {
-  const { twitch_userIds, twitch_usernames, from, to } = req.query;
-  let stream_count = 0;
-  let totalViewCount = 0;
-  let totalViews = [];
-  const query = twitch_userIds
-    ? {
-        twitch_userId: {
-          $in: twitch_userIds.split(',').map((item) => item.trim()),
-        },
-      }
-    : {};
-  let bots = await Bot.find(query);
-  if (!bots) {
-    return res.status(404).json({ errors: 'No bot found' });
-  }
-  await asyncForEach(bots, async (bot) => {
-    const query = {
-      bot: bot.id,
-    };
-    if (from || to) {
-      query.started_at = {};
-      if (from) query.started_at.$gte = moment(from).utc().format();
-      if (to) query.started_at.$lte = moment(to).utc().format();
+router.get(
+  '/views',
+  [
+    check('from', 'Invalid from date specified')
+      .optional()
+      .custom((value) => {
+        const withTime = moment(value, 'YYYY-MM-DDTHH:mm:ss', true).isValid();
+        const withoutTime = moment(value, 'YYYY-MM-DD', true).isValid();
+        return withTime || withoutTime;
+      }),
+    check('to', 'Invalid to date specified')
+      .optional()
+      .custom((value) => {
+        const withTime = moment(value, 'YYYY-MM-DDTHH:mm:ss', true).isValid();
+        const withoutTime = moment(value, 'YYYY-MM-DD', true).isValid();
+        return withTime || withoutTime;
+      }),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(422).json({ errors: errors.mapped() });
     }
-    streams = await Stream.find(query);
-    if (!streams) return res.status(404).json({ errors: 'No streams found' });
-    stream_count += streams.length;
-    await asyncForEach(streams, async (stream) => {
-      const query = twitch_usernames
-        ? {
-            stream: stream.id,
-            twitch_username: {
-              $in: twitch_usernames.split(',').map((item) => item.trim()),
-            },
-          }
-        : { stream: stream.id };
-      let views = await View.find(query);
-      totalViewCount += views.length;
-      totalViews.push({
-        stream,
-        view_count: views.length,
-        views,
+    const { twitch_userIds, twitch_usernames, from, to } = req.query;
+    let stream_count = 0;
+    let totalViewCount = 0;
+    let totalViews = [];
+    const query = twitch_userIds
+      ? {
+          twitch_userId: {
+            $in: twitch_userIds.split(',').map((item) => item.trim()),
+          },
+        }
+      : {};
+    let bots = await Bot.find(query);
+    if (!bots) {
+      return res.status(404).json({ errors: 'No bot found' });
+    }
+    await asyncForEach(bots, async (bot) => {
+      const query = {
+        $and: [{ bot: bot.id }, { ended_at: { $exists: true } }],
+      };
+      if (from || to) {
+        let started_at = {};
+        if (from) started_at.$gte = moment(from).utc().format();
+        if (to) started_at.$lte = moment(to).utc().format();
+        if (started_at) query.$and.push({ started_at });
+      }
+      streams = await Stream.find(query);
+      if (!streams) return res.status(404).json({ errors: 'No streams found' });
+      stream_count += streams.length;
+      await asyncForEach(streams, async (stream) => {
+        const query = twitch_usernames
+          ? {
+              stream: stream.id,
+              twitch_username: {
+                $in: twitch_usernames.split(',').map((item) => item.trim()),
+              },
+            }
+          : { stream: stream.id };
+        let views = await View.find(query);
+        totalViewCount += views.length;
+        totalViews.push({
+          stream,
+          view_count: views.length,
+          views,
+        });
       });
     });
-  });
-  return res.json({
-    stream_count,
-    totalViews: totalViewCount,
-    streams: totalViews,
-  });
-});
+    return res.json({
+      stream_count,
+      totalViews: totalViewCount,
+      streams: totalViews,
+    });
+  }
+);
 
 module.exports = router;
